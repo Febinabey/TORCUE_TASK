@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
-import App, { SUGGESTED_QUESTIONS } from '../../src/App.tsx';
+import App from '../../src/App.tsx';
 
 // Mock scrollIntoView for jsdom
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
@@ -103,15 +103,10 @@ describe('Frontend App Component & Chat Interface', () => {
     vi.clearAllMocks();
   });
 
-  it('renders the welcome screen and all four suggested questions initially', async () => {
+  it('renders the welcome screen and input controls initially', async () => {
     render(<App />);
 
     expect(screen.getByText('Welcome to Orderly AI')).toBeDefined();
-
-    for (const question of SUGGESTED_QUESTIONS) {
-      expect(screen.getByText(question)).toBeDefined();
-    }
-
     expect(screen.getByRole('button', { name: /Send message/i })).toBeDefined();
     expect(screen.getByLabelText(/Ask Orderly AI about orders/i)).toBeDefined();
   });
@@ -147,9 +142,14 @@ describe('Frontend App Component & Chat Interface', () => {
 
     render(<App />);
 
-    // Click the first suggested question
-    const firstSuggestedBtn = screen.getByText('What is the status of order ORD-1025?');
-    fireEvent.click(firstSuggestedBtn);
+    const textarea = screen.getByLabelText(/Ask Orderly AI about orders/i);
+    const sendButton = screen.getByRole('button', { name: /Send message/i });
+
+    // Type the question in textarea and click send
+    fireEvent.change(textarea, {
+      target: { value: 'What is the status of order ORD-1025?' },
+    });
+    fireEvent.click(sendButton);
 
     // Should immediately display user message
     expect(screen.getByText('What is the status of order ORD-1025?')).toBeDefined();
@@ -285,8 +285,14 @@ describe('Frontend App Component & Chat Interface', () => {
 
     render(<App />);
 
-    // Click suggested question
-    fireEvent.click(screen.getByText('What is the status of order ORD-1025?'));
+    const textarea = screen.getByLabelText(/Ask Orderly AI about orders/i);
+    const sendButton = screen.getByRole('button', { name: /Send message/i });
+
+    // Send a message
+    fireEvent.change(textarea, {
+      target: { value: 'What is the status of order ORD-1025?' },
+    });
+    fireEvent.click(sendButton);
 
     await waitFor(() => {
       expect(screen.getByText('Test response.')).toBeDefined();

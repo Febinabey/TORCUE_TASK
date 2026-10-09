@@ -5,27 +5,14 @@ import {
   Package,
   IndianRupee,
   RefreshCw,
-  Server,
   Bot,
   Send,
   RotateCcw,
   Check,
   Users,
   Layers,
-  ChevronDown,
-  ChevronUp,
-  XCircle,
-  TrendingUp,
-  Database,
-  ArrowRight,
-  ShieldCheck,
   Copy,
   Search,
-  Filter,
-  ExternalLink,
-  Store,
-  Clock,
-  Sparkles,
 } from 'lucide-react';
 
 export interface HealthResponse {
@@ -94,57 +81,8 @@ export interface ChatMessage {
   canRetry?: boolean;
 }
 
-export const SUGGESTED_QUESTIONS = [
-  'What is the status of order ORD-1025?',
-  'How many orders were cancelled?',
-  'What was the revenue from Electronics in August 2026?',
-  'Which customer has spent the most?',
-];
-
-interface SuggestedPromptItem {
-  question: string;
-  tag: string;
-  desc: string;
-  icon: React.ComponentType<{ className?: string }>;
-}
-
-const SUGGESTED_PROMPTS: SuggestedPromptItem[] = [
-  {
-    question: 'What is the status of order ORD-1025?',
-    tag: 'Fulfillment Lookup',
-    desc: 'Verify customer, delivery stage, and location',
-    icon: Package,
-  },
-  {
-    question: 'How many orders were cancelled?',
-    tag: 'Cancellation Audit',
-    desc: 'Audit cancelled orders and total volume',
-    icon: XCircle,
-  },
-  {
-    question: 'What was the revenue from Electronics in August 2026?',
-    tag: 'Category GMV',
-    desc: 'Aggregate catalog sales by category and month',
-    icon: TrendingUp,
-  },
-  {
-    question: 'Which customer has spent the most?',
-    tag: 'Customer Ranking',
-    desc: 'Identify top purchaser across all recorded orders',
-    icon: Users,
-  },
-];
-
-const QUICK_CHIPS = [
-  'Show all cancelled orders',
-  'What orders were placed in Chennai?',
-  'What did Sneha Pillai purchase?',
-  'Total revenue from Furniture?',
-];
-
 /**
  * Bespoke Orderly AI Geometric Brand Logo
- * Represents an isometric order box fused with data signal flow
  */
 export function OrderlyLogo({ className = 'w-8 h-8' }: { className?: string }) {
   return (
@@ -172,22 +110,18 @@ export function OrderlyLogo({ className = 'w-8 h-8' }: { className?: string }) {
           <stop offset="1" stopColor="#818CF8" />
         </linearGradient>
       </defs>
-      {/* Top Facet */}
       <path
         d="M20 5.5L34 13.5L20 21.5L6 13.5L20 5.5Z"
         fill="url(#orderly-top)"
       />
-      {/* Left Facet */}
       <path
         d="M6 15.2L20 23.2V35L6 27V15.2Z"
         fill="url(#orderly-left)"
       />
-      {/* Right Facet */}
       <path
         d="M20 23.2L34 15.2V27L20 35V23.2Z"
         fill="url(#orderly-right)"
       />
-      {/* Intelligent Aperture Core */}
       <ellipse
         cx="20"
         cy="13.5"
@@ -208,11 +142,10 @@ export function OrderlyLogo({ className = 'w-8 h-8' }: { className?: string }) {
 }
 
 /**
- * Message Content Formatter:
- * Seamlessly formats markdown tables, bullet lists, and paragraphs without broken dependencies
+ * Clean Message Content Formatter:
+ * Seamlessly formats markdown tables without broken layout
  */
 function FormattedMessageContent({ content }: { content: string }) {
-  // If the content contains markdown table syntax (| col | col |), parse into structured HTML table
   const hasMarkdownTable = content.includes('|') && content.includes('---');
 
   if (!hasMarkdownTable) {
@@ -223,7 +156,6 @@ function FormattedMessageContent({ content }: { content: string }) {
     );
   }
 
-  // Parse table and non-table blocks
   const lines = content.split('\n');
   const renderedElements: React.ReactNode[] = [];
   let tableBuffer: string[] = [];
@@ -241,7 +173,7 @@ function FormattedMessageContent({ content }: { content: string }) {
     }
 
     const headerLine = tableBuffer[0];
-    const dataLines = tableBuffer.slice(2); // Skip header & separator
+    const dataLines = tableBuffer.slice(2);
 
     const headers = headerLine
       .split('|')
@@ -249,7 +181,7 @@ function FormattedMessageContent({ content }: { content: string }) {
       .filter((c) => c.length > 0);
 
     renderedElements.push(
-      <div key={`table-${key}`} className="my-3 overflow-x-auto rounded-xl border border-slate-200 shadow-2xs">
+      <div key={`table-${key}`} className="my-2.5 overflow-x-auto rounded-lg border border-slate-200">
         <table className="min-w-full text-xs text-left">
           <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase text-[10px] tracking-wider">
             <tr>
@@ -317,8 +249,6 @@ export default function App() {
   const [recentOrders, setRecentOrders] = useState<OrderItem[]>([]);
   const [healthLoading, setHealthLoading] = useState<boolean>(true);
   const [healthError, setHealthError] = useState<string | null>(null);
-  const [lastChecked, setLastChecked] = useState<string>('');
-  const [showDiagnostics, setShowDiagnostics] = useState<boolean>(false);
 
   // Table Filters State
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -370,8 +300,6 @@ export default function App() {
         const ordersData = await ordersRes.json();
         setRecentOrders(ordersData.orders || []);
       }
-
-      setLastChecked(new Date().toLocaleTimeString());
     } catch (err: unknown) {
       console.error('Failed to connect to API:', err);
       setHealthError(err instanceof Error ? err.message : 'Unknown network error');
@@ -541,41 +469,20 @@ export default function App() {
     }
   };
 
-  // Compute status totals for segmented bar
-  const totalStatusCount = summary?.statusCounts
-    ? Object.values(summary.statusCounts).reduce((a, b) => a + b, 0)
-    : 0;
-
-  // Fulfillment success percentage
-  const deliveredCount = summary?.statusCounts?.delivered || 48;
-  const fulfillmentRate = totalStatusCount > 0 ? ((deliveredCount / totalStatusCount) * 100).toFixed(1) : '80.0';
-
   return (
     <div className="min-h-screen bg-[#F7F8FC] text-[#171A2C] flex flex-col md:flex-row font-sans selection:bg-indigo-100 selection:text-indigo-900">
-      {/* Slim Left Sidebar (240px Desktop, sleek header on mobile) */}
-      <aside className="w-full md:w-60 bg-white border-b md:border-b-0 md:border-r border-slate-200 flex flex-col shrink-0">
-        {/* Brand Header with Custom Geometric Logo */}
+      {/* Clean Left Sidebar */}
+      <aside className="w-full md:w-56 bg-white border-b md:border-b-0 md:border-r border-slate-200 flex flex-col shrink-0">
         <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between md:justify-start gap-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <div className="p-1.5 rounded-xl bg-slate-900 shadow-sm flex items-center justify-center">
-              <OrderlyLogo className="w-6 h-6" />
+              <OrderlyLogo className="w-5 h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-bold text-sm tracking-tight text-slate-900">
-                  Orderly
-                </span>
-                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-600 border border-indigo-200/60 uppercase">
-                  OPS
-                </span>
-              </div>
-              <p className="text-[10px] font-medium text-slate-400">
-                Torcue Screening Suite
-              </p>
-            </div>
+            <span className="font-bold text-sm tracking-tight text-slate-900">
+              Orderly AI
+            </span>
           </div>
 
-          {/* Mobile status indicator pill */}
           <div className="md:hidden">
             {health?.status === 'ok' ? (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -590,91 +497,33 @@ export default function App() {
           </div>
         </div>
 
-        {/* Sidebar Navigation */}
         <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between">
           <nav className="space-y-1">
-            <div className="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Operations Hub
-            </div>
             <button
-              className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold bg-indigo-50/90 text-indigo-700 border border-indigo-100 transition shadow-2xs"
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold bg-indigo-50/80 text-indigo-700 border border-indigo-100/70 transition"
               aria-current="page"
             >
-              <div className="flex items-center gap-2.5">
-                <Bot className="w-4 h-4 text-indigo-600" />
-                <span>AI Order Assistant</span>
-              </div>
-              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-200/60 font-bold text-indigo-800">
-                ACTIVE
-              </span>
+              <Bot className="w-4 h-4 text-indigo-600" />
+              <span>Order Assistant</span>
             </button>
-            <a
-              href="#dataset-section"
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition"
-            >
-              <Database className="w-4 h-4 text-slate-400" />
-              <span>Catalog Records</span>
-            </a>
           </nav>
 
-          {/* Verified Dataset Status Area */}
-          <div className="hidden md:flex flex-col space-y-3 pt-4 border-t border-slate-100">
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                  <Store className="w-3 h-3 text-slate-400" />
-                  Store Data
-                </span>
-                <span className="text-[10px] font-mono text-slate-400">CSV v1</span>
-              </div>
-              <div className="font-mono text-xs font-semibold text-slate-800">
-                data/orders.csv
-              </div>
-              <div className="flex items-center gap-1.5 text-[11px]">
-                {health?.dataset?.loaded ? (
-                  <span className="text-emerald-700 font-medium inline-flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>{health.dataset.totalOrders || 60} verified orders</span>
-                  </span>
-                ) : healthLoading ? (
-                  <span className="text-slate-500 inline-flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-slate-400 animate-pulse" />
-                    Loading dataset...
-                  </span>
-                ) : (
-                  <span className="text-rose-600 font-medium inline-flex items-center gap-1.5">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    Dataset unverified
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="px-1 text-[11px] text-slate-400 flex items-center justify-between">
-              <span className="font-mono text-[10px]">Gemini 3.8 Flash</span>
-              <span className="inline-flex items-center gap-1 text-slate-500 text-[10px]">
-                <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                Deterministic
+          <div className="hidden md:flex flex-col space-y-2 pt-4 border-t border-slate-100 text-xs text-slate-500">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span className="font-medium text-slate-700">
+                {summary?.totalOrders ?? (health?.dataset.totalOrders || 60)} orders synced
               </span>
             </div>
           </div>
         </div>
       </aside>
 
-      {/* Main Workspace Area */}
+      {/* Main Workspace */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         {/* Workspace Top Header */}
-        <header className="bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 py-4 sm:py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sticky top-0 z-20 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+        <header className="bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 py-4 sm:py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sticky top-0 z-20 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider">
-                E-Commerce Operations
-              </span>
-              <span className="text-slate-300">/</span>
-              <span className="text-[11px] font-medium text-slate-500">
-                60 Catalog Orders
-              </span>
-            </div>
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
               Your orders, understood.
             </h1>
@@ -687,12 +536,12 @@ export default function App() {
             {health?.status === 'ok' ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Backend & Dataset Online
+                Online
               </span>
             ) : healthError ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs">
                 <AlertCircle className="w-3.5 h-3.5" />
-                Backend Disconnected
+                Offline
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs">
@@ -720,13 +569,13 @@ export default function App() {
 
         {/* Content Container */}
         <main className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto">
-          {/* Metrics Row (4 Cards with skeleton loading & zero hardcoded fake revenue) */}
+          {/* Metrics Row (4 Clean Cards) */}
           <section
             aria-label="Dataset key metrics"
             className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
           >
             {/* 1. Total Orders */}
-            <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 p-4 shadow-2xs hover:border-slate-300 transition">
+            <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 p-4 shadow-2xs">
               <div className="flex items-center justify-between text-slate-500 mb-2">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                   Total Orders
@@ -746,16 +595,10 @@ export default function App() {
                   '—'
                 )}
               </div>
-              <div className="flex items-center gap-1.5 mt-1 text-[11px]">
-                <span className="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200/60">
-                  {fulfillmentRate}% Fulfilled
-                </span>
-                <span className="text-slate-400">· 60 total</span>
-              </div>
             </div>
 
             {/* 2. Recorded Order Value */}
-            <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 p-4 shadow-2xs hover:border-slate-300 transition">
+            <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 p-4 shadow-2xs">
               <div className="flex items-center justify-between text-slate-500 mb-2">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                   Recorded Order Value
@@ -775,13 +618,10 @@ export default function App() {
                   '—'
                 )}
               </div>
-              <p className="text-[11px] text-slate-500 mt-1">
-                Gross catalog transaction sum
-              </p>
             </div>
 
             {/* 3. Unique Customers */}
-            <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 p-4 shadow-2xs hover:border-slate-300 transition">
+            <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 p-4 shadow-2xs">
               <div className="flex items-center justify-between text-slate-500 mb-2">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                   Unique Customers
@@ -799,13 +639,10 @@ export default function App() {
                   '—'
                 )}
               </div>
-              <p className="text-[11px] text-slate-500 mt-1">
-                {summary ? `Across ${summary.uniqueCities} metro cities` : 'Active buyer accounts'}
-              </p>
             </div>
 
             {/* 4. Product Categories */}
-            <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 p-4 shadow-2xs hover:border-slate-300 transition">
+            <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 p-4 shadow-2xs">
               <div className="flex items-center justify-between text-slate-500 mb-2">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                   Product Categories
@@ -818,36 +655,33 @@ export default function App() {
                 {healthLoading ? (
                   <div className="h-7 w-14 bg-slate-200 animate-pulse rounded my-0.5" />
                 ) : summary?.uniqueCategories != null ? (
-                  `${summary.uniqueCategories} Categories`
+                  summary.uniqueCategories
                 ) : (
                   '—'
                 )}
               </div>
-              <p className="text-[11px] text-slate-500 mt-1">
-                {summary ? `${summary.uniqueProducts} catalog products` : 'Verified catalog items'}
-              </p>
             </div>
           </section>
 
-          {/* Two-Column Core Layout (Chat ~60-65%, Dataset Overview ~35-40%) */}
+          {/* Two-Column Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Left Column: Interactive AI Order Assistant */}
+            {/* Left Column: Clean AI Order Assistant */}
             <section
-              className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-2xs flex flex-col h-[760px] overflow-hidden"
+              className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-2xs flex flex-col h-[740px] overflow-hidden"
               aria-label="Chat assistant panel"
             >
               {/* Chat Panel Header */}
               <div className="px-5 py-4 border-b border-slate-200 bg-white flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-xl bg-slate-900 flex items-center justify-center text-white shadow-2xs">
-                    <OrderlyLogo className="w-5 h-5" />
+                  <div className="h-8 w-8 rounded-lg bg-slate-900 flex items-center justify-center text-white shadow-2xs">
+                    <OrderlyLogo className="w-4 h-4" />
                   </div>
                   <div>
                     <h2 className="text-sm font-bold text-slate-900 leading-tight">
                       Order Assistant
                     </h2>
                     <p className="text-[11px] text-slate-500">
-                      Powered by Gemini · Grounded in your order data
+                      Grounded in your store's verified order records
                     </p>
                   </div>
                 </div>
@@ -868,55 +702,20 @@ export default function App() {
               {/* Chat Messages Stream */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-[#FAFAFC]">
                 {messages.length === 0 ? (
-                  /* Welcome Screen & 2x2 Suggested Questions Grid */
-                  <div className="h-full flex flex-col justify-center items-center text-center px-2 py-4 max-w-xl mx-auto">
-                    <div className="p-2.5 rounded-2xl bg-slate-900 shadow-sm mb-3">
+                  /* Minimal Empty Welcome State (No bulky cards) */
+                  <div className="h-full flex flex-col justify-center items-center text-center px-4 max-w-md mx-auto">
+                    <div className="p-3 rounded-2xl bg-slate-900 shadow-sm mb-3">
                       <OrderlyLogo className="w-8 h-8" />
                     </div>
                     <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-1.5">
                       Welcome to Orderly AI
                     </h3>
-                    <p className="text-xs sm:text-sm text-slate-500 leading-relaxed mb-6 max-w-md">
-                      Ask questions about order status, catalog revenue, cancellations, or customer rankings across the 60 recorded transactions.
+                    <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-sm">
+                      Ask anything about your store's orders, revenue, customers, or fulfillment.
                     </p>
-
-                    <div className="w-full space-y-2.5 text-left">
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1">
-                        Suggested Inquiries
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        {SUGGESTED_PROMPTS.map((item, idx) => {
-                          const IconComp = item.icon;
-                          return (
-                            <button
-                              key={idx}
-                              onClick={() => handleSendMessage(item.question)}
-                              disabled={chatLoading}
-                              className="p-3.5 rounded-xl bg-white border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/20 hover:shadow-2xs transition group text-left flex flex-col justify-between cursor-pointer"
-                            >
-                              <div>
-                                <div className="flex items-center justify-between mb-1.5">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
-                                    {item.tag}
-                                  </span>
-                                  <IconComp className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition" />
-                                </div>
-                                <div className="font-semibold text-xs sm:text-[13px] text-slate-900 group-hover:text-indigo-700 transition leading-snug">
-                                  {item.question}
-                                </div>
-                              </div>
-                              <div className="text-[11px] text-slate-500 mt-2 flex items-center justify-between">
-                                <span>{item.desc}</span>
-                                <ArrowRight className="w-3 h-3 text-slate-400 group-hover:translate-x-0.5 transition" />
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
                   </div>
                 ) : (
-                  /* Conversation Stream */
+                  /* Active Messages */
                   messages.map((msg) => (
                     <div
                       key={msg.id}
@@ -944,16 +743,13 @@ export default function App() {
                               : 'bg-white border border-slate-200 text-slate-800 rounded-bl-xs'
                           }`}
                         >
-                          {/* Assistant Meta Header with Copy Button */}
+                          {/* Copy button */}
                           {msg.role === 'assistant' && !msg.isError && (
-                            <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-slate-100 text-[11px] text-slate-400">
-                              <span className="font-semibold text-slate-600">
-                                Orderly Ops Response
-                              </span>
+                            <div className="flex justify-end mb-1">
                               <button
                                 onClick={() => handleCopyMessage(msg.id, msg.content)}
-                                className="inline-flex items-center gap-1 hover:text-slate-700 transition text-[10px] cursor-pointer"
-                                title="Copy response text"
+                                className="text-slate-400 hover:text-slate-600 transition text-[10px] inline-flex items-center gap-1 cursor-pointer"
+                                title="Copy text"
                               >
                                 {copiedMessageId === msg.id ? (
                                   <>
@@ -961,10 +757,7 @@ export default function App() {
                                     <span className="text-emerald-600">Copied</span>
                                   </>
                                 ) : (
-                                  <>
-                                    <Copy className="w-3 h-3" />
-                                    <span>Copy</span>
-                                  </>
+                                  <Copy className="w-3 h-3" />
                                 )}
                               </button>
                             </div>
@@ -976,12 +769,11 @@ export default function App() {
                               {msg.toolEvents.map((evt, eIdx) => (
                                 <span
                                   key={eIdx}
-                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono font-medium border ${
+                                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-mono font-medium border ${
                                     evt.status === 'success'
                                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                       : 'bg-rose-50 text-rose-700 border-rose-200'
                                   }`}
-                                  title={`Tool: ${evt.name} (${evt.status})`}
                                 >
                                   {evt.status === 'success' ? (
                                     <Check className="w-3.5 h-3.5 text-emerald-600" />
@@ -994,10 +786,8 @@ export default function App() {
                             </div>
                           )}
 
-                          {/* Message Content Formatter */}
                           <FormattedMessageContent content={msg.content} />
 
-                          {/* Retry Button on Error */}
                           {msg.isError && msg.canRetry && (
                             <div className="mt-3 pt-2.5 border-t border-rose-200 flex items-center justify-between">
                               <span className="text-xs text-rose-700 font-medium">
@@ -1027,7 +817,6 @@ export default function App() {
                   ))
                 )}
 
-                {/* Loading Indicator */}
                 {chatLoading && (
                   <div className="flex items-center gap-2.5">
                     <div className="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center shrink-0">
@@ -1046,25 +835,7 @@ export default function App() {
               </div>
 
               {/* Anchored Bottom Composer */}
-              <div className="p-3.5 sm:p-4 border-t border-slate-200 bg-white space-y-2">
-                {/* Fast Action Question Chips */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px] no-scrollbar">
-                  <span className="text-slate-400 shrink-0 font-medium text-[10px] uppercase tracking-wider">
-                    Quick:
-                  </span>
-                  {QUICK_CHIPS.map((chip, cIdx) => (
-                    <button
-                      key={cIdx}
-                      type="button"
-                      onClick={() => handleSendMessage(chip)}
-                      disabled={chatLoading}
-                      className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 text-[11px] font-medium whitespace-nowrap border border-slate-200/70 transition cursor-pointer"
-                    >
-                      {chip}
-                    </button>
-                  ))}
-                </div>
-
+              <div className="p-3.5 sm:p-4 border-t border-slate-200 bg-white">
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -1097,7 +868,7 @@ export default function App() {
                   </button>
                 </form>
 
-                <div className="flex items-center justify-between px-1 text-[11px] text-slate-400">
+                <div className="flex items-center justify-between px-1 text-[11px] text-slate-400 mt-2">
                   <span>
                     Press <kbd className="font-mono bg-slate-100 text-slate-600 px-1 py-0.5 rounded border border-slate-200 text-[10px]">Enter</kbd> to submit · <kbd className="font-mono bg-slate-100 text-slate-600 px-1 py-0.5 rounded border border-slate-200 text-[10px]">Shift+Enter</kbd> for newline
                   </span>
@@ -1106,284 +877,117 @@ export default function App() {
               </div>
             </section>
 
-            {/* Right Column: Coherent Dataset Overview Panel */}
+            {/* Right Column: Clean Orders Table */}
             <section
-              id="dataset-section"
-              className="lg:col-span-5 space-y-4"
+              className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col h-[740px]"
               aria-label="Dataset overview and transaction records"
             >
-              {/* 1. Validated Dataset Header Card */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 sm:p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900">
-                      Store Dataset
-                    </h3>
-                    <p className="text-[11px] text-slate-500">
-                      Validated transaction records from <code className="font-mono text-indigo-600">orders.csv</code>
-                    </p>
-                  </div>
-                  <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                    {summary?.totalOrders ?? (health?.dataset.totalOrders || 60)} records
+              {/* Orders Header */}
+              <div className="px-4 py-3.5 border-b border-slate-200 bg-white flex items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-slate-900 text-sm">
+                    Store Orders
+                  </h3>
+                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium">
+                    {filteredOrders.length}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
-                  <div className="p-2.5 rounded-lg bg-slate-50/80 border border-slate-100">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
-                      Active Period
-                    </span>
-                    <span className="font-semibold text-slate-800 text-[11px]">
-                      {summary?.dateRange
-                        ? `${summary.dateRange.from} to ${summary.dateRange.to}`
-                        : 'Jun 2026 – Sep 2026'}
-                    </span>
-                  </div>
-
-                  <div className="p-2.5 rounded-lg bg-slate-50/80 border border-slate-100">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
-                      Geographies
-                    </span>
-                    <span className="font-semibold text-slate-800 text-[11px] flex items-center gap-1">
-                      {summary ? `${summary.uniqueCities} Metro Cities` : '6 Metro Cities'}
-                    </span>
-                  </div>
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search..."
+                    className="pl-8 pr-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50/50 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-32 sm:w-40 transition"
+                  />
                 </div>
               </div>
 
-              {/* 2. Order Status Breakdown with Proportional Segmented Bar */}
-              {summary?.statusCounts && (
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 sm:p-5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                      Fulfillment Pipeline
-                    </h3>
-                    <span className="text-[11px] font-semibold text-emerald-700">
-                      {deliveredCount} Delivered ({fulfillmentRate}%)
-                    </span>
-                  </div>
+              {/* Status Filter Tabs */}
+              <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-1 overflow-x-auto text-[11px] bg-slate-50/50">
+                {['all', 'delivered', 'cancelled', 'returned'].map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setStatusFilter(f)}
+                    className={`px-2.5 py-0.5 rounded text-[11px] font-medium capitalize transition cursor-pointer ${
+                      statusFilter === f
+                        ? 'bg-slate-900 text-white'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                    }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
 
-                  {/* Segmented Proportional Bar */}
-                  <div className="flex h-2.5 rounded-full overflow-hidden bg-slate-100 gap-0.5">
-                    {Object.entries(summary.statusCounts).map(([status, count]) => {
-                      const pct = totalStatusCount > 0 ? (count / totalStatusCount) * 100 : 0;
-                      let barColor = 'bg-slate-400';
-                      if (status === 'delivered') barColor = 'bg-emerald-500';
-                      else if (status === 'cancelled') barColor = 'bg-rose-500';
-                      else if (status === 'returned') barColor = 'bg-amber-500';
-                      else if (status === 'shipped') barColor = 'bg-blue-500';
-                      else if (status === 'processing') barColor = 'bg-indigo-500';
-
-                      return (
-                        <div
-                          key={status}
-                          style={{ width: `${pct}%` }}
-                          className={`${barColor} transition-all`}
-                          title={`${status}: ${count} (${pct.toFixed(0)}%)`}
-                        />
-                      );
-                    })}
-                  </div>
-
-                  {/* Badges list */}
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {Object.entries(summary.statusCounts).map(([status, count]) => (
-                      <button
-                        key={status}
-                        onClick={() => setStatusFilter(statusFilter === status ? 'all' : status)}
-                        className={`px-2 py-0.5 rounded-md border text-[11px] font-medium flex items-center gap-1.5 transition cursor-pointer ${
-                          statusFilter === status
-                            ? 'ring-2 ring-indigo-500/30 font-bold'
-                            : ''
-                        } ${getStatusBadge(status)}`}
-                      >
-                        <span className="capitalize">{status}</span>
-                        <span className="px-1 py-0.2 rounded bg-black/5 font-semibold">
-                          {count}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 3. Interactive Recent Orders Data Table */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-                <div className="px-4 py-3 border-b border-slate-200 bg-slate-50/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-xs sm:text-sm">
-                      Interactive Catalog Explorer
-                    </h3>
-                    <p className="text-[11px] text-slate-500">
-                      Filter rows or click an order to ask the assistant
-                    </p>
-                  </div>
-
-                  {/* Search Input for Dataset Table */}
-                  <div className="relative">
-                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search orders..."
-                      className="pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 w-36 sm:w-44 transition"
-                    />
-                  </div>
-                </div>
-
-                {/* Filter Pills */}
-                <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-1.5 overflow-x-auto text-[11px] bg-white">
-                  <span className="text-slate-400 text-[10px] uppercase font-bold mr-1">
-                    Filter:
-                  </span>
-                  {['all', 'delivered', 'cancelled', 'returned'].map((f) => (
-                    <button
-                      key={f}
-                      onClick={() => setStatusFilter(f)}
-                      className={`px-2 py-0.5 rounded text-[11px] font-medium capitalize transition cursor-pointer ${
-                        statusFilter === f
-                          ? 'bg-slate-900 text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
-                    >
-                      {f}
-                    </button>
-                  ))}
-                  <span className="ml-auto text-slate-400 font-mono text-[10px]">
-                    {filteredOrders.length} shown
-                  </span>
-                </div>
-
-                <div className="overflow-x-auto max-h-[280px]">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 text-slate-500 font-medium uppercase tracking-wider sticky top-0 border-b border-slate-200 text-[10px]">
+              {/* Table Body */}
+              <div className="overflow-x-auto flex-1">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 font-medium uppercase tracking-wider sticky top-0 border-b border-slate-200 text-[10px]">
+                    <tr>
+                      <th className="px-3.5 py-2 font-semibold">Order ID</th>
+                      <th className="px-3.5 py-2 font-semibold">Product</th>
+                      <th className="px-3.5 py-2 text-right font-semibold">Total</th>
+                      <th className="px-3.5 py-2 text-center font-semibold">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    {filteredOrders.length === 0 ? (
                       <tr>
-                        <th className="px-3.5 py-2 font-semibold">Order ID</th>
-                        <th className="px-3.5 py-2 font-semibold">Product</th>
-                        <th className="px-3.5 py-2 text-right font-semibold">Total</th>
-                        <th className="px-3.5 py-2 text-center font-semibold">Status</th>
+                        <td colSpan={4} className="px-4 py-8 text-center text-xs text-slate-400">
+                          {healthLoading ? 'Loading orders...' : 'No orders found'}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-slate-700">
-                      {filteredOrders.length === 0 ? (
-                        <tr>
-                          <td colSpan={4} className="px-4 py-6 text-center text-xs text-slate-400">
-                            {healthLoading
-                              ? 'Loading verified order records...'
-                              : 'No matching orders found'}
+                    ) : (
+                      filteredOrders.map((order) => (
+                        <tr
+                          key={order.order_id}
+                          className="hover:bg-indigo-50/30 transition group cursor-pointer"
+                          onClick={() => {
+                            handleSendMessage(`What is the status of order ${order.order_id}?`);
+                          }}
+                          title={`Ask about order ${order.order_id}`}
+                        >
+                          <td className="px-3.5 py-2 font-mono font-semibold text-indigo-600 group-hover:underline">
+                            {order.order_id}
+                          </td>
+                          <td className="px-3.5 py-2">
+                            <div className="font-semibold text-slate-900 truncate max-w-[130px]">
+                              {order.product}
+                            </div>
+                            <div className="text-[10px] text-slate-400 truncate max-w-[130px]">
+                              {order.customer_name} · {order.city}
+                            </div>
+                          </td>
+                          <td className="px-3.5 py-2 text-right font-mono text-emerald-700 font-semibold whitespace-nowrap">
+                            ₹{order.total_inr.toLocaleString('en-IN')}
+                          </td>
+                          <td className="px-3.5 py-2 text-center">
+                            <span
+                              className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold border ${getStatusBadge(
+                                order.status
+                              )}`}
+                            >
+                              {order.status}
+                            </span>
                           </td>
                         </tr>
-                      ) : (
-                        filteredOrders.map((order) => (
-                          <tr
-                            key={order.order_id}
-                            className="hover:bg-indigo-50/30 transition group cursor-pointer"
-                            onClick={() => {
-                              handleSendMessage(`What is the status of order ${order.order_id}?`);
-                            }}
-                            title={`Ask about order ${order.order_id}`}
-                          >
-                            <td className="px-3.5 py-2 font-mono font-semibold text-indigo-600 group-hover:underline">
-                              {order.order_id}
-                            </td>
-                            <td className="px-3.5 py-2">
-                              <div className="font-semibold text-slate-900 truncate max-w-[130px]">
-                                {order.product}
-                              </div>
-                              <div className="text-[10px] text-slate-400 truncate max-w-[130px]">
-                                {order.customer_name} · {order.city}
-                              </div>
-                            </td>
-                            <td className="px-3.5 py-2 text-right font-mono text-emerald-700 font-semibold whitespace-nowrap">
-                              ₹{order.total_inr.toLocaleString('en-IN')}
-                            </td>
-                            <td className="px-3.5 py-2 text-center">
-                              <span
-                                className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold border ${getStatusBadge(
-                                  order.status
-                                )}`}
-                              >
-                                {order.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* 4. Discreet Expandable System Diagnostics */}
-              <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden text-xs">
-                <button
-                  type="button"
-                  onClick={() => setShowDiagnostics(!showDiagnostics)}
-                  className="w-full px-4 py-2.5 flex items-center justify-between text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer"
-                  aria-expanded={showDiagnostics}
-                >
-                  <div className="flex items-center gap-2">
-                    <Server className="w-3.5 h-3.5 text-slate-400" />
-                    <span className="font-semibold text-xs">System & API Diagnostics</span>
-                  </div>
-                  {showDiagnostics ? (
-                    <ChevronUp className="w-4 h-4 text-slate-400" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 text-slate-400" />
-                  )}
-                </button>
-
-                {showDiagnostics && (
-                  <div className="px-4 pb-3.5 pt-1 border-t border-slate-100 text-[11px] text-slate-500 space-y-1.5 bg-slate-50/50">
-                    <div className="flex justify-between py-0.5">
-                      <span>Status</span>
-                      <span className="font-medium text-slate-800 font-mono">
-                        {health?.status ?? 'Disconnected'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between py-0.5">
-                      <span>Server Uptime</span>
-                      <span className="font-mono text-slate-800">
-                        {health?.uptimeSeconds ?? 0}s
-                      </span>
-                    </div>
-                    <div className="flex justify-between py-0.5">
-                      <span>AI Model</span>
-                      <span className="font-mono text-slate-800">
-                        {health?.aiConfig?.model ?? 'gemini-3.8-flash'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between py-0.5">
-                      <span>API Key</span>
-                      <span className="font-mono text-slate-800">
-                        {health?.aiConfig?.keyConfigured ? 'Configured' : 'Missing'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between py-0.5">
-                      <span>Last Checked</span>
-                      <span className="font-mono text-slate-800">
-                        {lastChecked || 'Initial load'}
-                      </span>
-                    </div>
-                  </div>
-                )}
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </section>
           </div>
         </main>
 
         {/* Minimal Footer */}
-        <footer className="mt-auto border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500">
-          <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <span className="font-medium">Orderly AI © 2026 · E-Commerce Operations Intelligence</span>
-            <div className="flex items-center gap-2.5 text-slate-400 text-[11px]">
-              <span>React 19 + TypeScript</span>
-              <span>·</span>
-              <span>Express + Zod</span>
-              <span>·</span>
-              <span>Gemini Interactions API</span>
-            </div>
+        <footer className="mt-auto border-t border-slate-200 bg-white py-3.5 text-center text-xs text-slate-400">
+          <div className="max-w-7xl mx-auto px-4 flex items-center justify-between">
+            <span>Orderly AI © 2026</span>
+            <span>All store data verified</span>
           </div>
         </footer>
       </div>
