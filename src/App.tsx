@@ -503,7 +503,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between">
+        <div className="hidden md:flex p-3 sm:p-4 flex-1 flex-col justify-between">
           <nav className="space-y-1">
             <button
               className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold bg-indigo-50/80 text-indigo-700 border border-indigo-100/70 transition"
@@ -514,7 +514,7 @@ export default function App() {
             </button>
           </nav>
 
-          <div className="hidden md:flex flex-col space-y-2 pt-4 border-t border-slate-100 text-xs text-slate-500">
+          <div className="flex flex-col space-y-2 pt-4 border-t border-slate-100 text-xs text-slate-500">
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
               <span className="font-medium text-slate-700">
@@ -528,7 +528,7 @@ export default function App() {
       {/* Main Workspace */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         {/* Workspace Top Header */}
-        <header className="bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 py-4 sm:py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sticky top-0 z-20 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+        <header className="bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 py-3.5 sm:py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 sm:sticky sm:top-0 sm:z-20 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
               Order Operations Hub
@@ -670,10 +670,10 @@ export default function App() {
           </section>
 
           {/* Two-Column Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
             {/* Left Column: Clean AI Order Assistant */}
             <section
-              className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-2xs flex flex-col h-[740px] overflow-hidden"
+              className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-2xs flex flex-col h-[560px] sm:h-[640px] lg:h-[740px] overflow-hidden"
               aria-label="Chat assistant panel"
             >
               {/* Chat Panel Header */}
@@ -875,8 +875,11 @@ export default function App() {
                 </form>
 
                 <div className="flex items-center justify-between px-1 text-[11px] text-slate-400 mt-2">
-                  <span>
+                  <span className="hidden sm:inline">
                     Press <kbd className="font-mono bg-slate-100 text-slate-600 px-1 py-0.5 rounded border border-slate-200 text-[10px]">Enter</kbd> to submit · <kbd className="font-mono bg-slate-100 text-slate-600 px-1 py-0.5 rounded border border-slate-200 text-[10px]">Shift+Enter</kbd> for newline
+                  </span>
+                  <span className="sm:hidden text-[10px] text-slate-400">
+                    Tap send to submit
                   </span>
                   <span>{inputText.length} / 2000</span>
                 </div>
@@ -885,7 +888,7 @@ export default function App() {
 
             {/* Right Column: Clean Orders Table */}
             <section
-              className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col h-[740px]"
+              className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col h-[460px] sm:h-[560px] lg:h-[740px]"
               aria-label="Dataset overview and transaction records"
             >
               {/* Orders Header */}
