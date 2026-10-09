@@ -7,7 +7,7 @@ Orderly AI is a full-stack web chat application that answers questions about a s
 ## Features
 
 - Natural-language order questions through a React chat UI.
-- Real Gemini function calling using the official `@google/genai` SDK and Interactions API.
+- Real Gemini function calling using the official `@google/genai` SDK and Interactions API, featuring production model `gemini-2.5-flash` with automated multi-model fallback cascade (`gemini-2.0-flash` / `gemini-2.5-flash-lite`) for rate-limit resilience.
 - Three deterministic tools: `lookup_order`, `search_orders`, and `calculate_order_metrics`.
 - CSV validation, bounded tool results, validated tool arguments, limited agent tool rounds, and sanitized API errors.
 - Loading, tool-activity, retry/error and chat-reset states in the frontend.
@@ -115,13 +115,12 @@ Order counts include all statuses unless filtered. Revenue and customer-spending
 This repository includes `render.yaml` for a single Node web service that serves the built Vite frontend and Express API from the same origin.
 
 1. In Render, create a **Blueprint** from this public repository: [Febinabey/TORCUE_TASK](https://github.com/Febinabey/TORCUE_TASK).
-2. Review the service settings from `render.yaml`.
+2. Review the service settings from `render.yaml` (configured with `GEMINI_MODEL=gemini-2.5-flash`).
 3. Set `GEMINI_API_KEY` in Render's environment settings; keep it secret.
 4. Deploy and inspect the build/start logs.
-5. Verify `https://YOUR-SERVICE.onrender.com/api/health` and send a real question in the deployed chat UI.
-6. Replace the live-demo note at the top of this README with the actual public URL only after verification.
+5. Verify `https://orderly-ai.onrender.com/api/health` and interact with the deployed chat UI.
 
-Render free services may spin down after inactivity, and a first request can take longer while the service wakes. Keep the app available through the review period.
+Render free services may spin down after inactivity, and a first request can take longer while the service wakes. The React frontend includes a background keep-alive ping to ensure container readiness.
 
 ## Implementation write-up
 
