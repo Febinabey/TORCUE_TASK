@@ -2,7 +2,7 @@
 
 Orderly AI is a full-stack web chat application that answers questions about a supplied e-commerce orders dataset using a Gemini AI agent and real backend function calling.
 
-**Live demo:** Not deployed yet. Add the public Render URL here after deploying and verifying the service.
+**Live demo:** [https://orderly-ai.onrender.com](https://orderly-ai.onrender.com)
 
 ## Features
 

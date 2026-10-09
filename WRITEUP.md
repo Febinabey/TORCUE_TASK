@@ -8,6 +8,6 @@ Guardrails include startup validation of the CSV, strict input and tool-argument
 
 The repository includes Vitest and Supertest tests for data loading, schema validation, API health, deterministic tools, chat request validation, mocked Gemini function-call cycles, and frontend interaction states. The reported local run passed 40 tests across six test suites, and the Vite production build completed successfully. These are local results and should be re-run against the final deployed commit.
 
-Deployment is configured for a single Render Node web service: the build creates the Vite `dist` directory and Express serves both the API and frontend from one origin. Configure `GEMINI_API_KEY` and `GEMINI_MODEL` in Render's environment settings; never commit secrets. **Live URL:** add the actual deployed Render URL after deployment is completed and verified.
+Deployment is configured for a single Render Node web service: the build creates the Vite `dist` directory and Express serves both the API and frontend from one origin. Configure `GEMINI_API_KEY` and `GEMINI_MODEL` in Render's environment settings; never commit secrets. **Live URL:** [https://orderly-ai.onrender.com](https://orderly-ai.onrender.com)
 
 With more time, I would add CI checks, stronger end-to-end browser tests, request timeouts and rate limiting, better structured order-result cards, and monitoring for model latency and quota failures. Development assistance was provided by Google Antigravity and ChatGPT; the runtime AI agent uses the Gemini API.
