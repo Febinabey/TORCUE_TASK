@@ -1,127 +1,128 @@
 # Orderly AI — Intelligent Order Assistant
 
-A screening-task full-stack e-commerce order management system and AI assistant scaffold built for Torcue AI.
+Orderly AI is a full-stack web chat application that answers questions about a supplied e-commerce orders dataset using a Gemini AI agent and real backend function calling.
 
----
+**Live demo:** Not deployed yet. Add the public Render URL here after deploying and verifying the service.
 
-## 🚀 Tech Stack
+## Features
 
-- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS (modern `@tailwindcss/vite` integration)
-- **Backend**: Node.js 22, Express (native JavaScript ES modules)
-- **Validation**: Zod (strict schema & financial consistency validation)
-- **Data Ingestion**: `csv-parse` for parsing and validation of `data/orders.csv`
-- **AI SDK**: `@google/genai` (official Google Gen AI JavaScript SDK ready for Gemini 2.5 Flash agent integration)
-- **Testing**: Vitest & Supertest
-- **Deployment**: Render (`render.yaml` zero-configuration blueprint)
+- Natural-language order questions through a React chat UI.
+- Real Gemini function calling using the official `@google/genai` SDK and Interactions API.
+- Three deterministic tools: `lookup_order`, `search_orders`, and `calculate_order_metrics`.
+- CSV validation, bounded tool results, validated tool arguments, limited agent tool rounds, and sanitized API errors.
+- Loading, tool-activity, retry/error and chat-reset states in the frontend.
+- Responsive interface and health endpoint.
 
----
+## Tech stack
 
-## 📊 Dataset Inspection & Integrity Verification
+- **Frontend:** React 19, TypeScript, Vite, Tailwind CSS v4, lucide-react
+- **Backend:** Node.js, Express
+- **AI:** Gemini API via `@google/genai`
+- **Validation/data:** Zod, csv-parse
+- **Tests:** Vitest, Supertest, React Testing Library
+- **Hosting configuration:** Render Blueprint (`render.yaml`)
 
-The dataset is ingested directly from `data/orders.csv` without substitution.
+## Dataset
 
-| Property | Value / Findings |
-|---|---|
-| **File Path** | `data/orders.csv` |
-| **Total Rows** | 60 data rows (`ORD-1001` through `ORD-1060`) + 1 header row |
-| **Headers (11 columns)** | `order_id`, `order_date`, `customer_name`, `city`, `product`, `category`, `quantity`, `unit_price_inr`, `total_inr`, `payment_method`, `status` |
-| **Date Format** | Strict ISO `YYYY-MM-DD` (`2026-06-01` to `2026-09-28`). All valid calendar dates. |
-| **Status Distribution** | `delivered` (48), `cancelled` (7), `returned` (3), `processing` (1), `shipped` (1) |
-| **Payment Methods** | `UPI` (15), `Debit Card` (12), `Credit Card` (12), `Net Banking` (11), `Cash on Delivery` (10) |
-| **Numeric Fields** | `quantity`: [1, 5] (positive integers)<br>`unit_price_inr`: [199, 21,999]<br>`total_inr`: [199, 65,997] |
-| **Null / Empty Values** | **0** across all fields |
-| **Duplicate Order IDs** | **0** duplicate IDs |
-| **Financial Agreement** | **100% agreement** — every row satisfies `quantity * unit_price_inr === total_inr` |
-| **Catalog Coverage** | 13 unique products across 4 categories (`Electronics`, `Accessories`, `Stationery`, `Furniture`) |
-| **Geographic Coverage** | 6 cities (`Bengaluru`, `Chennai`, `Hyderabad`, `Kochi`, `Pune`, `Thiruvananthapuram`) |
+The supplied `data/orders.csv` contains 60 orders from June to September 2026. The server parses and validates the real file at startup; it does not substitute synthetic order data. Startup fails with a clear error if the file is missing or invalid.
 
----
+The current dataset inspection reported 60 rows, 11 columns, no empty fields or duplicate order IDs, valid ISO dates, and agreement between `total_inr` and `quantity * unit_price_inr`.
 
-## 📁 Repository Structure
+## Run locally
 
-```
-orderly-ai/
-├── data/
-│   └── orders.csv              # Real dataset (60 orders)
-├── server/
-│   ├── app.js                  # Express application setup & static serving
-│   ├── config.js               # Environment config & Zod validation
-│   ├── index.js                # Server entry point with startup dataset validation
-│   ├── routes/
-│   │   └── api.js              # /api/health, /api/orders, /api/orders/summary
-│   ├── schemas/
-│   │   └── orderSchema.js      # Zod validation schemas
-│   └── services/
-│       └── dataService.js      # CSV ingestion, data validation & cache
-├── src/
-│   ├── App.tsx                 # Responsive Orderly AI dashboard UI
-│   ├── index.css               # Tailwind CSS v4 entry
-│   ├── main.tsx                # React 19 entry point
-│   └── vite-env.d.ts           # Vite client type definitions
-├── tests/
-│   └── server/
-│       ├── dataService.test.js # CSV loading & validation tests
-│       ├── health.test.js      # Supertest health check tests
-│       └── productionServe.test.js # Express static dist serving tests
-├── .env.example                # Template for environment variables
-├── .gitignore                  # Git ignore rules
-├── index.html                  # HTML entry point
-├── package.json                # Single root package configuration
-├── render.yaml                 # Render cloud deployment blueprint
-├── tsconfig.json               # TypeScript configuration
-└── vite.config.ts              # Vite configuration with proxy and Tailwind
-```
+### Prerequisites
 
----
+- Node.js 20 or newer
+- npm 10 or newer
+- A Gemini API key from [Google AI Studio](https://aistudio.google.com/)
 
-## 🛠️ Getting Started
+### Install and configure
 
-### 1. Prerequisites
-- Node.js >= 20.x (tested on v22.13.1)
-- npm >= 10.x
-
-### 2. Installation
 ```bash
 npm install
 ```
 
-### 3. Environment Setup
-Copy `.env.example` to `.env`:
-```bash
-cp .env.example .env
+Copy `.env.example` to `.env`, then set your own key:
+
+```dotenv
+PORT=3001
+NODE_ENV=development
+DATA_FILE_PATH=data/orders.csv
+GEMINI_API_KEY=your_actual_key
+GEMINI_MODEL=gemini-3.8-flash
 ```
-Key variables:
-- `PORT`: Express server port (default: `3001`)
-- `NODE_ENV`: `development` or `production`
-- `DATA_FILE_PATH`: Path to CSV (default: `data/orders.csv`)
-- `GEMINI_API_KEY`: API key for Gemini 2.5 Flash (for autonomous agent tasks)
 
----
+Never commit `.env` or put the key in frontend code. In production, configure secrets through the hosting provider's environment-variable settings.
 
-## 💻 Available Commands
+### Start development servers
 
-| Command | Description |
-|---|---|
-| `npm run dev:client` | Starts Vite React dev server with proxy at `http://localhost:5173` |
-| `npm run dev:server` | Starts Express API server with file watch at `http://localhost:3001` |
-| `npm run build` | Builds production client into `dist/` |
-| `npm run start` | Starts Express production server (serves static UI & API from same origin) |
-| `npm test` | Runs all Vitest and Supertest unit and integration tests |
+Open two terminals from the repository root.
 
----
+Terminal 1 — backend:
 
-## 🩺 Health Check & API Endpoints
+```bash
+npm run dev:server
+```
 
-- **`GET /api/health`**: Returns system status, uptime, dataset loading confirmation, and AI configuration.
-- **`GET /api/orders/summary`**: Returns aggregated financial and distribution metrics.
-- **`GET /api/orders`**: Returns orders with optional query filtering (`status`, `city`, `category`, `limit`).
+Terminal 2 — frontend:
 
----
+```bash
+npm run dev:client
+```
 
-## 🚀 Deployment (Render)
+Open [http://localhost:5173](http://localhost:5173). The Vite development server proxies `/api` requests to the Express server on port 3001.
 
-This repository includes a `render.yaml` blueprint. On Render:
-1. Connect repository: `https://github.com/Febinabey/TORCUE_TASK.git`
-2. Render uses `buildCommand`: `npm install && npm run build`
-3. Render uses `startCommand`: `npm start`
-4. Set `GEMINI_API_KEY` under Environment Variables in the Render dashboard.
+### Test and build
+
+```bash
+npm test
+npm run build
+```
+
+The tests mock Gemini where needed, so the test suite does not require a live API call or consume model quota. A real chat request requires a valid API key and available model quota.
+
+## API endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/health` | Service, dataset and AI configuration health |
+| `GET` | `/api/orders` | List orders with supported filters |
+| `GET` | `/api/orders/summary` | Dataset summary metrics |
+| `POST` | `/api/chat` | Send a chat message to the AI agent |
+
+Example chat request:
+
+```json
+{
+  "message": "What is the status of order ORD-1025?"
+}
+```
+
+The chat endpoint returns an assistant `reply` and sanitized `toolEvents` metadata.
+
+## Tool calling and business rules
+
+Gemini chooses which declared tool to call. The backend validates tool arguments and executes allowlisted JavaScript functions against the parsed CSV. The actual order details and monetary calculations come from tool results, not from model memory.
+
+- `lookup_order`: exact order ID lookup.
+- `search_orders`: bounded search using optional order/customer/product/category/city/status/date filters.
+- `calculate_order_metrics`: order counts, counts by status, revenue totals, and top-customer spending.
+
+Order counts include all statuses unless filtered. Revenue and customer-spending metrics exclude cancelled orders by default; returned orders remain included unless excluded by a status filter. Monetary aggregations use `total_inr`.
+
+## Deploy to Render
+
+This repository includes `render.yaml` for a single Node web service that serves the built Vite frontend and Express API from the same origin.
+
+1. In Render, create a **Blueprint** from this public repository: [Febinabey/TORCUE_TASK](https://github.com/Febinabey/TORCUE_TASK).
+2. Review the service settings from `render.yaml`.
+3. Set `GEMINI_API_KEY` in Render's environment settings; keep it secret.
+4. Deploy and inspect the build/start logs.
+5. Verify `https://YOUR-SERVICE.onrender.com/api/health` and send a real question in the deployed chat UI.
+6. Replace the live-demo note at the top of this README with the actual public URL only after verification.
+
+Render free services may spin down after inactivity, and a first request can take longer while the service wakes. Keep the app available through the review period.
+
+## Implementation write-up
+
+See [WRITEUP.md](./WRITEUP.md) for the architecture, tool-call flow, guardrails, deployment plan, possible improvements, and AI tools used.
