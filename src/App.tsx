@@ -311,6 +311,12 @@ export default function App() {
 
   useEffect(() => {
     fetchHealthAndData();
+
+    // Keep-alive ping every 4 minutes to prevent Render free-tier instance sleep while tab is open
+    const interval = setInterval(() => {
+      fetch('/api/health').catch(() => {});
+    }, 4 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   // Filtered orders in the interactive table
@@ -525,10 +531,10 @@ export default function App() {
         <header className="bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 py-4 sm:py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sticky top-0 z-20 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-              Your orders, understood.
+              Order Operations Hub
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-              Ask questions about orders, revenue, customers, and fulfilment.
+              Real-time order tracking, catalog analytics, and fulfillment management.
             </p>
           </div>
 
