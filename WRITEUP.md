@@ -40,6 +40,7 @@ The agent provides Gemini with three strongly typed function declarations:
 - **Security & Privacy:** 
   - API keys (`GEMINI_API_KEY`) are handled purely on the backend via environment variables and never exposed to the frontend.
   - Upstream errors are sanitized to prevent internal stack trace leakage.
+- **Rate-Limit Resilience & Multi-Model Fallback:** Configured `gemini-2.5-flash` by default (offering 1,500 requests/day on free tier compared to 20 requests/day on preview tiers) with an automated fallback cascade (`gemini-2.5-flash` → `gemini-2.0-flash` → `gemini-2.5-flash-lite`) to handle unexpected upstream rate limits seamlessly.
 
 ---
 

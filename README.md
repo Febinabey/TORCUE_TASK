@@ -49,7 +49,7 @@ PORT=3001
 NODE_ENV=development
 DATA_FILE_PATH=data/orders.csv
 GEMINI_API_KEY=your_actual_key
-GEMINI_MODEL=gemini-3.8-flash
+GEMINI_MODEL=gemini-2.5-flash
 ```
 
 Never commit `.env` or put the key in frontend code. In production, configure secrets through the hosting provider's environment-variable settings.

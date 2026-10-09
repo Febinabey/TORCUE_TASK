@@ -89,6 +89,98 @@ function extractFunctionCalls(interaction) {
   return calls;
 }
 
+const FALLBACK_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-2.5-flash-lite',
+];
+
+function isRateLimitOrQuotaError(err) {
+  if (!err) return false;
+  const msg = (err.message || '').toLowerCase();
+  const status = err.status || err.httpMeta?.status || err.code;
+  return (
+    status === 429 ||
+    msg.includes('429') ||
+    msg.includes('rate limit') ||
+    msg.includes('quota') ||
+    msg.includes('resource_exhausted') ||
+    msg.includes('too many requests')
+  );
+}
+
+/**
+ * Executes a single conversational agent interaction turn with a specific model
+ */
+async function executeAgentTurn(ai, userMessage, modelName) {
+  const toolEvents = [];
+  let rounds = 0;
+
+  // Initial call to Interactions API
+  let interaction = await ai.interactions.create({
+    model: modelName,
+    input: userMessage,
+    tools: GEMINI_TOOL_DECLARATIONS,
+    system_instruction: SYSTEM_INSTRUCTION,
+  });
+
+  // Multi-turn tool execution loop
+  while (rounds < MAX_TOOL_ROUNDS) {
+    rounds++;
+    const functionCalls = extractFunctionCalls(interaction);
+
+    if (functionCalls.length === 0) {
+      // No function calls requested; final answer reached
+      break;
+    }
+
+    const functionResults = [];
+
+    for (const call of functionCalls) {
+      const label = getToolLabel(call.name, call.arguments);
+      let status = 'success';
+      let result;
+
+      try {
+        result = executeTool(call.name, call.arguments);
+        if (result && result.success === false) {
+          status = 'error';
+        }
+      } catch (err) {
+        status = 'error';
+        result = { success: false, error: err.message };
+      }
+
+      toolEvents.push({
+        name: call.name,
+        label,
+        status,
+      });
+
+      functionResults.push({
+        type: 'function_result',
+        call_id: call.id,
+        name: call.name,
+        result,
+      });
+    }
+
+    // Send function results back to Gemini using the Interactions API
+    interaction = await ai.interactions.create({
+      model: modelName,
+      previous_interaction_id: interaction.id,
+      input: functionResults,
+    });
+  }
+
+  const reply = extractOutputText(interaction);
+
+  return {
+    reply,
+    toolEvents,
+  };
+}
+
 /**
  * Executes a conversation turn with Gemini using the Interactions API
  *
@@ -97,7 +189,7 @@ function extractFunctionCalls(interaction) {
  */
 export async function chatWithAgent(userMessage, options = {}) {
   const apiKey = options.apiKey || config.gemini.apiKey;
-  const modelName = options.model || config.gemini.model;
+  const requestedModel = options.model || config.gemini.model;
 
   if (!apiKey && !options.mockClient) {
     throw new AiConfigurationMissingError(
@@ -106,84 +198,43 @@ export async function chatWithAgent(userMessage, options = {}) {
   }
 
   const ai = options.mockClient || new GoogleGenAI({ apiKey });
-  const toolEvents = [];
-  let rounds = 0;
 
-  try {
-    // Initial call to Interactions API
-    let interaction = await ai.interactions.create({
-      model: modelName,
-      input: userMessage,
-      tools: GEMINI_TOOL_DECLARATIONS,
-      system_instruction: SYSTEM_INSTRUCTION,
-    });
+  // When mockClient is provided (e.g. in tests), run only with requested model
+  const modelsToAttempt = options.mockClient
+    ? [requestedModel]
+    : [requestedModel, ...FALLBACK_MODELS.filter((m) => m !== requestedModel)];
 
-    // Multi-turn tool execution loop
-    while (rounds < MAX_TOOL_ROUNDS) {
-      rounds++;
-      const functionCalls = extractFunctionCalls(interaction);
+  let lastError = null;
 
-      if (functionCalls.length === 0) {
-        // No function calls requested; final answer reached
-        break;
+  for (let i = 0; i < modelsToAttempt.length; i++) {
+    const currentModel = modelsToAttempt[i];
+    try {
+      return await executeAgentTurn(ai, userMessage, currentModel);
+    } catch (err) {
+      if (err instanceof AiConfigurationMissingError) {
+        throw err;
       }
 
-      const functionResults = [];
+      lastError = err;
+      const isQuotaError = isRateLimitOrQuotaError(err);
+      const hasNextFallback = i < modelsToAttempt.length - 1;
 
-      for (const call of functionCalls) {
-        const label = getToolLabel(call.name, call.arguments);
-        let status = 'success';
-        let result;
-
-        try {
-          result = executeTool(call.name, call.arguments);
-          if (result && result.success === false) {
-            status = 'error';
-          }
-        } catch (err) {
-          status = 'error';
-          result = { success: false, error: err.message };
-        }
-
-        toolEvents.push({
-          name: call.name,
-          label,
-          status,
-        });
-
-        functionResults.push({
-          type: 'function_result',
-          call_id: call.id,
-          name: call.name,
-          result,
-        });
+      if (isQuotaError && hasNextFallback && !options.mockClient) {
+        console.warn(
+          `[Orderly AI] Rate limit / quota error on model "${currentModel}". Attempting fallback to "${modelsToAttempt[i + 1]}"...`
+        );
+        continue;
       }
 
-      // Send function results back to Gemini using the Interactions API
-      interaction = await ai.interactions.create({
-        model: modelName,
-        previous_interaction_id: interaction.id,
-        input: functionResults,
-      });
+      break;
     }
-
-    const reply = extractOutputText(interaction);
-
-    return {
-      reply,
-      toolEvents,
-    };
-  } catch (err) {
-    if (err instanceof AiConfigurationMissingError) {
-      throw err;
-    }
-
-    // Sanitize upstream errors
-    console.error('[Orderly AI Agent Error]', err.message);
-    throw new AgentExecutionError(
-      `AI service error: ${err.message || 'Upstream model call failed.'}`
-    );
   }
+
+  // Sanitize upstream errors
+  console.error('[Orderly AI Agent Error]', lastError?.message);
+  throw new AgentExecutionError(
+    `AI service error: ${lastError?.message || 'Upstream model call failed.'}`
+  );
 }
 
 export const agentService = {
