@@ -10,10 +10,17 @@ import {
   MapPin,
   Bot,
   Send,
-  Trash2,
   RotateCcw,
-  Activity,
   Check,
+  Users,
+  Layers,
+  ChevronDown,
+  ChevronUp,
+  XCircle,
+  TrendingUp,
+  Database,
+  ArrowRight,
+  ShieldCheck,
 } from 'lucide-react';
 
 export interface HealthResponse {
@@ -89,6 +96,40 @@ export const SUGGESTED_QUESTIONS = [
   'Which customer has spent the most?',
 ];
 
+interface SuggestedPromptItem {
+  question: string;
+  tag: string;
+  desc: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+const SUGGESTED_PROMPTS: SuggestedPromptItem[] = [
+  {
+    question: 'What is the status of order ORD-1025?',
+    tag: 'Order Lookup',
+    desc: 'Inspect customer, product, and delivery state',
+    icon: Package,
+  },
+  {
+    question: 'How many orders were cancelled?',
+    tag: 'Status Audit',
+    desc: 'Audit cancelled orders and refund statuses',
+    icon: XCircle,
+  },
+  {
+    question: 'What was the revenue from Electronics in August 2026?',
+    tag: 'Revenue Metrics',
+    desc: 'Filter catalog sales by category and date span',
+    icon: TrendingUp,
+  },
+  {
+    question: 'Which customer has spent the most?',
+    tag: 'Customer Ranking',
+    desc: 'Identify top purchaser across all recorded orders',
+    icon: Users,
+  },
+];
+
 export default function App() {
   // System and Dataset State
   const [health, setHealth] = useState<HealthResponse | null>(null);
@@ -97,6 +138,7 @@ export default function App() {
   const [healthLoading, setHealthLoading] = useState<boolean>(true);
   const [healthError, setHealthError] = useState<string | null>(null);
   const [lastChecked, setLastChecked] = useState<string>('');
+  const [showDiagnostics, setShowDiagnostics] = useState<boolean>(false);
 
   // Chat State
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -248,8 +290,7 @@ export default function App() {
       setLastFailedMessage(message);
     } finally {
       setChatLoading(false);
-      // Refocus input if on desktop
-      if (window.innerWidth > 768) {
+      if (typeof window !== 'undefined' && window.innerWidth > 768) {
         textareaRef.current?.focus();
       }
     }
@@ -276,56 +317,162 @@ export default function App() {
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
       case 'delivered':
-        return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       case 'cancelled':
-        return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+        return 'bg-rose-50 text-rose-700 border-rose-200';
       case 'returned':
-        return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+        return 'bg-amber-50 text-amber-700 border-amber-200';
       case 'shipped':
-        return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+        return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'processing':
-        return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
+        return 'bg-indigo-50 text-indigo-700 border-indigo-200';
       default:
-        return 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+        return 'bg-slate-50 text-slate-700 border-slate-200';
     }
   };
 
+  // Compute status totals for segmented bar
+  const totalStatusCount = summary?.statusCounts
+    ? Object.values(summary.statusCounts).reduce((a, b) => a + b, 0)
+    : 0;
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      {/* Header */}
-      <header className="border-b border-slate-800/80 bg-slate-900/70 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 ring-1 ring-white/20">
-              <Sparkles className="w-5 h-5 text-white" />
+    <div className="min-h-screen bg-[#F7F8FC] text-[#171A2C] flex flex-col md:flex-row font-sans selection:bg-indigo-100 selection:text-indigo-900">
+      {/* Slim Left Sidebar (240px Desktop, sleek header on mobile) */}
+      <aside className="w-full md:w-60 bg-white border-b md:border-b-0 md:border-r border-slate-200 flex flex-col shrink-0">
+        {/* Brand Header */}
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between md:justify-start gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="h-9 w-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-xs">
+              <Package className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-lg tracking-tight text-white">Orderly AI</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-medium">
-                  {health?.aiConfig?.model || 'gemini-3.8-flash'}
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-sm tracking-tight text-slate-900">
+                  Orderly AI
                 </span>
               </div>
-              <p className="text-xs text-slate-400 hidden sm:block">
-                Intelligent Order Assistant & Operations Engine
+              <p className="text-[10px] font-semibold tracking-wider text-indigo-600 uppercase">
+                Order Intelligence
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Mobile status indicator pill */}
+          <div className="md:hidden">
             {health?.status === 'ok' ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-600">
+                Offline
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Sidebar Navigation */}
+        <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between">
+          <nav className="space-y-1">
+            <div className="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Operations
+            </div>
+            <button
+              className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium bg-indigo-50/80 text-indigo-700 border border-indigo-100/80 transition"
+              aria-current="page"
+            >
+              <div className="flex items-center gap-2.5">
+                <Bot className="w-4 h-4 text-indigo-600" />
+                <span>Assistant</span>
+              </div>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-100/90 font-semibold text-indigo-700">
+                Active
+              </span>
+            </button>
+            <a
+              href="#dataset-section"
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition"
+            >
+              <Database className="w-4 h-4 text-slate-400" />
+              <span>Dataset Records</span>
+            </a>
+          </nav>
+
+          {/* Dataset Status Area & Health Details near bottom */}
+          <div className="hidden md:flex flex-col space-y-3 pt-4 border-t border-slate-100">
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  Data Source
+                </span>
+                <span className="text-[10px] text-slate-400">CSV v1</span>
+              </div>
+              <div className="font-mono text-xs font-semibold text-slate-800">
+                data/orders.csv
+              </div>
+              <div className="flex items-center gap-1.5 text-[11px]">
+                {health?.dataset?.loaded ? (
+                  <span className="text-emerald-700 font-medium inline-flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>{health.dataset.totalOrders || 60} verified orders</span>
+                  </span>
+                ) : healthLoading ? (
+                  <span className="text-slate-500 inline-flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-slate-400 animate-pulse" />
+                    Loading dataset...
+                  </span>
+                ) : (
+                  <span className="text-rose-600 font-medium inline-flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    Dataset unverified
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="px-1 text-[11px] text-slate-400 flex items-center justify-between">
+              <span>{health?.aiConfig?.model || 'gemini-3.8-flash'}</span>
+              <span className="inline-flex items-center gap-1 text-slate-500">
+                <ShieldCheck className="w-3 h-3 text-slate-400" />
+                Grounded
+              </span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Workspace Area */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        {/* Workspace Top Header */}
+        <header className="bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 py-4 sm:py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sticky top-0 z-20 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+          <div>
+            <div className="text-[11px] font-semibold text-indigo-600 uppercase tracking-wider mb-0.5">
+              Workspace · Operations Intelligence
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+              Your orders, understood.
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+              Ask questions about orders, revenue, customers, and fulfilment.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5 sm:gap-3 self-start sm:self-auto">
+            {health?.status === 'ok' ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 Backend & Dataset Online
               </span>
             ) : healthError ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 shadow-xs">
                 <AlertCircle className="w-3.5 h-3.5" />
                 Backend Disconnected
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
                 Connecting...
               </span>
             )}
@@ -333,383 +480,601 @@ export default function App() {
             <button
               onClick={fetchHealthAndData}
               disabled={healthLoading}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 transition disabled:opacity-50 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-xs transition disabled:opacity-50 cursor-pointer"
               title="Refresh status from /api/health"
               aria-label="Refresh system status"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${healthLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw
+                className={`w-3.5 h-3.5 text-slate-500 ${
+                  healthLoading ? 'animate-spin text-indigo-600' : ''
+                }`}
+              />
               <span className="hidden sm:inline">Refresh</span>
             </button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main Content Area: Split 2-column SaaS Layout */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Interactive AI Order Assistant (7 Columns) */}
-        <section
-          className="lg:col-span-7 flex flex-col h-[750px] rounded-2xl border border-slate-800/90 bg-slate-900/60 shadow-xl overflow-hidden"
-          aria-label="Chat assistant panel"
-        >
-          {/* Chat Window Header */}
-          <div className="px-5 py-3.5 border-b border-slate-800/80 bg-slate-900/90 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                <Bot className="w-4 h-4" />
+        {/* Content Container */}
+        <main className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto">
+          {/* Metrics Row (4 Cards with skeleton loading & zero hardcoded fake revenue) */}
+          <section
+            aria-label="Dataset key metrics"
+            className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
+          >
+            {/* 1. Total Orders */}
+            <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 p-4 shadow-xs">
+              <div className="flex items-center justify-between text-slate-500 mb-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  Total Orders
+                </span>
+                <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
+                  <Package className="w-4 h-4" />
+                </div>
               </div>
-              <div>
-                <h2 className="text-sm font-semibold text-white">Order Assistant</h2>
-                <p className="text-[11px] text-slate-400">
-                  Grounded with Gemini function calling on 60 verified orders
-                </p>
+              <div className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                {healthLoading ? (
+                  <div className="h-7 w-16 bg-slate-200 animate-pulse rounded my-0.5" />
+                ) : summary ? (
+                  summary.totalOrders
+                ) : health?.dataset.totalOrders != null ? (
+                  health.dataset.totalOrders
+                ) : (
+                  '—'
+                )}
               </div>
+              <p className="text-[11px] text-slate-500 mt-1">
+                {summary ? `${summary.uniqueCustomers} unique customers` : 'From orders.csv'}
+              </p>
             </div>
 
-            {messages.length > 0 && (
-              <button
-                onClick={handleClearChat}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition cursor-pointer"
-                title="Clear current conversation"
-                aria-label="Clear conversation"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Reset Chat</span>
-              </button>
-            )}
-          </div>
-
-          {/* Chat Messages Stream */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
-            {messages.length === 0 ? (
-              /* Welcome Screen & Suggested Questions */
-              <div className="h-full flex flex-col justify-center items-center text-center px-4 py-6 max-w-lg mx-auto">
-                <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/25 mb-4 ring-1 ring-white/20">
-                  <Sparkles className="w-6 h-6 text-white" />
+            {/* 2. Recorded Order Value */}
+            <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 p-4 shadow-xs">
+              <div className="flex items-center justify-between text-slate-500 mb-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  Recorded Order Value
+                </span>
+                <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600">
+                  <IndianRupee className="w-4 h-4" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">Welcome to Orderly AI</h3>
-                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed mb-6">
-                  I am your intelligent order operations assistant. Ask me questions about order
-                  status, catalog revenue, cancellations, or customer rankings across the supplied 60-order dataset.
-                </p>
+              </div>
+              <div className="text-xl sm:text-2xl font-bold text-emerald-700 tracking-tight">
+                {healthLoading ? (
+                  <div className="h-7 w-24 bg-slate-200 animate-pulse rounded my-0.5" />
+                ) : summary ? (
+                  `₹${summary.totalRevenueInr.toLocaleString('en-IN')}`
+                ) : health?.dataset.totalRevenueInr != null ? (
+                  `₹${health.dataset.totalRevenueInr.toLocaleString('en-IN')}`
+                ) : (
+                  '—'
+                )}
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Gross catalog transaction sum
+              </p>
+            </div>
 
-                <div className="w-full space-y-2">
-                  <p className="text-[11px] font-semibold tracking-wider uppercase text-slate-500 text-left px-1">
-                    Suggested Questions
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left">
-                    {SUGGESTED_QUESTIONS.map((question, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => handleSendMessage(question)}
-                        disabled={chatLoading}
-                        className="p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-blue-500/40 hover:bg-slate-800/60 transition group text-xs text-slate-300 hover:text-white flex flex-col justify-between cursor-pointer"
+            {/* 3. Unique Customers */}
+            <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 p-4 shadow-xs">
+              <div className="flex items-center justify-between text-slate-500 mb-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  Unique Customers
+                </span>
+                <div className="p-1.5 rounded-lg bg-purple-50 text-purple-600">
+                  <Users className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                {healthLoading ? (
+                  <div className="h-7 w-12 bg-slate-200 animate-pulse rounded my-0.5" />
+                ) : summary?.uniqueCustomers != null ? (
+                  summary.uniqueCustomers
+                ) : (
+                  '—'
+                )}
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">
+                {summary ? `Across ${summary.uniqueCities} cities` : 'Active buyer accounts'}
+              </p>
+            </div>
+
+            {/* 4. Product Categories */}
+            <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 p-4 shadow-xs">
+              <div className="flex items-center justify-between text-slate-500 mb-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  Product Categories
+                </span>
+                <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
+                  <Layers className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                {healthLoading ? (
+                  <div className="h-7 w-14 bg-slate-200 animate-pulse rounded my-0.5" />
+                ) : summary?.uniqueCategories != null ? (
+                  `${summary.uniqueCategories} Categories`
+                ) : (
+                  '—'
+                )}
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">
+                {summary ? `${summary.uniqueProducts} catalog products` : 'Verified catalog items'}
+              </p>
+            </div>
+          </section>
+
+          {/* Two-Column Core Layout (Chat ~60-65%, Dataset Overview ~35-40%) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Left Column: Interactive AI Order Assistant */}
+            <section
+              className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-xs flex flex-col h-[750px] overflow-hidden"
+              aria-label="Chat assistant panel"
+            >
+              {/* Chat Panel Header */}
+              <div className="px-5 py-4 border-b border-slate-200 bg-white flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-2xs">
+                    <Bot className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-semibold text-slate-900 leading-tight">
+                      Order Assistant
+                    </h2>
+                    <p className="text-[11px] text-slate-500">
+                      Powered by Gemini · Grounded in your order data
+                    </p>
+                  </div>
+                </div>
+
+                {messages.length > 0 && (
+                  <button
+                    onClick={handleClearChat}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition cursor-pointer"
+                    title="Clear current conversation"
+                    aria-label="Clear conversation"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Reset Chat</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Chat Messages Stream */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-[#FAFAFC]">
+                {messages.length === 0 ? (
+                  /* Welcome Screen & 2x2 Suggested Questions Grid */
+                  <div className="h-full flex flex-col justify-center items-center text-center px-2 py-4 max-w-xl mx-auto">
+                    <div className="h-12 w-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mb-3 shadow-xs">
+                      <Sparkles className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-1.5">
+                      Welcome to Orderly AI
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-500 leading-relaxed mb-6 max-w-md">
+                      What would you like to know? Ask about order status, catalog revenue, cancellations, or customer rankings.
+                    </p>
+
+                    <div className="w-full space-y-2.5 text-left">
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1">
+                        Suggested Inquiries
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {SUGGESTED_PROMPTS.map((item, idx) => {
+                          const IconComp = item.icon;
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => handleSendMessage(item.question)}
+                              disabled={chatLoading}
+                              className="p-3.5 rounded-xl bg-white border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/20 hover:shadow-xs transition group text-left flex flex-col justify-between cursor-pointer"
+                            >
+                              <div>
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <span className="text-[10px] font-semibold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
+                                    {item.tag}
+                                  </span>
+                                  <IconComp className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition" />
+                                </div>
+                                <div className="font-semibold text-xs sm:text-[13px] text-slate-900 group-hover:text-indigo-700 transition leading-snug">
+                                  {item.question}
+                                </div>
+                              </div>
+                              <div className="text-[11px] text-slate-500 mt-2 flex items-center justify-between">
+                                <span>{item.desc}</span>
+                                <ArrowRight className="w-3 h-3 text-slate-400 group-hover:translate-x-0.5 transition" />
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Conversation Stream */
+                  messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex flex-col ${
+                        msg.role === 'user' ? 'items-end' : 'items-start'
+                      }`}
+                    >
+                      <div
+                        className={`flex gap-2.5 max-w-[92%] sm:max-w-[85%] ${
+                          msg.role === 'user' ? 'justify-end' : 'justify-start'
+                        }`}
                       >
-                        <span className="font-medium group-hover:text-blue-400 transition mb-1">
-                          {question}
+                        {msg.role === 'assistant' && (
+                          <div className="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 mt-0.5">
+                            <Bot className="w-4 h-4" />
+                          </div>
+                        )}
+
+                        <div
+                          className={`rounded-2xl px-4 py-3 text-[14px] leading-relaxed shadow-xs ${
+                            msg.role === 'user'
+                              ? 'bg-indigo-50 border border-indigo-100 text-slate-900 rounded-br-xs'
+                              : msg.isError
+                              ? 'bg-rose-50 border border-rose-200 text-rose-900 rounded-bl-xs'
+                              : 'bg-white border border-slate-200 text-slate-800 rounded-bl-xs'
+                          }`}
+                        >
+                          {/* Tool Activity Badges */}
+                          {msg.toolEvents && msg.toolEvents.length > 0 && (
+                            <div className="mb-2.5 pb-2.5 border-b border-slate-100 flex flex-wrap gap-1.5">
+                              {msg.toolEvents.map((evt, eIdx) => (
+                                <span
+                                  key={eIdx}
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono font-medium border ${
+                                    evt.status === 'success'
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                      : 'bg-rose-50 text-rose-700 border-rose-200'
+                                  }`}
+                                  title={`Tool: ${evt.name} (${evt.status})`}
+                                >
+                                  {evt.status === 'success' ? (
+                                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                  ) : (
+                                    <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                                  )}
+                                  <span>{evt.label}</span>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Message Content */}
+                          <div className="whitespace-pre-wrap leading-relaxed text-slate-800 font-normal">
+                            {msg.content}
+                          </div>
+
+                          {/* Retry Button on Error */}
+                          {msg.isError && msg.canRetry && (
+                            <div className="mt-3 pt-2.5 border-t border-rose-200 flex items-center justify-between">
+                              <span className="text-xs text-rose-700 font-medium">
+                                Something went wrong.
+                              </span>
+                              <button
+                                onClick={handleRetry}
+                                disabled={chatLoading}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs font-medium transition cursor-pointer"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                                <span>Retry</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <span
+                        className={`text-[11px] text-slate-400 mt-1 px-1 ${
+                          msg.role === 'assistant' ? 'ml-9' : ''
+                        }`}
+                      >
+                        {msg.timestamp}
+                      </span>
+                    </div>
+                  ))
+                )}
+
+                {/* Loading Indicator */}
+                {chatLoading && (
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                      <Bot className="w-4 h-4" />
+                    </div>
+                    <div className="bg-white border border-slate-200 rounded-2xl rounded-bl-xs px-4 py-3 text-xs sm:text-sm text-slate-600 shadow-xs flex items-center gap-3">
+                      <div className="w-4 h-4 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin" />
+                      <span className="animate-pulse">
+                        Orderly AI is processing your request via Gemini...
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Anchored Bottom Composer */}
+              <div className="p-3.5 sm:p-4 border-t border-slate-200 bg-white">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }}
+                  className="flex items-end gap-2.5"
+                >
+                  <div className="flex-1 relative">
+                    <textarea
+                      ref={textareaRef}
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder="Ask anything about your orders… (Enter to send, Shift+Enter for new line)"
+                      rows={2}
+                      maxLength={2000}
+                      disabled={chatLoading}
+                      aria-label="Ask Orderly AI about orders"
+                      className="w-full resize-none rounded-xl bg-slate-50/70 border border-slate-200 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 disabled:opacity-50 transition"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={chatLoading || !inputText.trim()}
+                    aria-label="Send message"
+                    className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center transition disabled:opacity-40 disabled:cursor-not-allowed shadow-xs cursor-pointer shrink-0"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </form>
+
+                <div className="flex items-center justify-between mt-2 px-1 text-[11px] text-slate-400">
+                  <span>
+                    Press <kbd className="font-mono bg-slate-100 text-slate-600 px-1 py-0.5 rounded border border-slate-200 text-[10px]">Enter</kbd> to submit · <kbd className="font-mono bg-slate-100 text-slate-600 px-1 py-0.5 rounded border border-slate-200 text-[10px]">Shift+Enter</kbd> for newline
+                  </span>
+                  <span>{inputText.length} / 2000</span>
+                </div>
+              </div>
+            </section>
+
+            {/* Right Column: Coherent Dataset Overview Panel */}
+            <section
+              id="dataset-section"
+              className="lg:col-span-5 space-y-4"
+              aria-label="Dataset overview and transaction records"
+            >
+              {/* 1. Validated Dataset Header Card */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900">
+                      Dataset Overview
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      Validated local store transaction records
+                    </p>
+                  </div>
+                  <span className="text-[11px] font-mono font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                    {summary?.totalOrders ?? (health?.dataset.totalOrders || 60)} orders
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
+                  <div className="p-2.5 rounded-lg bg-slate-50/80 border border-slate-100">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
+                      Active Period
+                    </span>
+                    <span className="font-medium text-slate-800 text-[11px]">
+                      {summary?.dateRange
+                        ? `${summary.dateRange.from} to ${summary.dateRange.to}`
+                        : 'Jun 2026 – Sep 2026'}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-slate-50/80 border border-slate-100">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
+                      Geographies
+                    </span>
+                    <span className="font-medium text-slate-800 text-[11px] flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-slate-500" />
+                      {summary ? `${summary.uniqueCities} Metro Cities` : '6 Metro Cities'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Order Status Breakdown with Proportional Segmented Bar */}
+              {summary?.statusCounts && (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      Status Distribution
+                    </h3>
+                    <span className="text-[11px] text-slate-400">
+                      {totalStatusCount} total
+                    </span>
+                  </div>
+
+                  {/* Segmented Proportional Bar */}
+                  <div className="flex h-2.5 rounded-full overflow-hidden bg-slate-100 gap-0.5">
+                    {Object.entries(summary.statusCounts).map(([status, count]) => {
+                      const pct = totalStatusCount > 0 ? (count / totalStatusCount) * 100 : 0;
+                      let barColor = 'bg-slate-400';
+                      if (status === 'delivered') barColor = 'bg-emerald-500';
+                      else if (status === 'cancelled') barColor = 'bg-rose-500';
+                      else if (status === 'returned') barColor = 'bg-amber-500';
+                      else if (status === 'shipped') barColor = 'bg-blue-500';
+                      else if (status === 'processing') barColor = 'bg-indigo-500';
+
+                      return (
+                        <div
+                          key={status}
+                          style={{ width: `${pct}%` }}
+                          className={`${barColor} transition-all`}
+                          title={`${status}: ${count} (${pct.toFixed(0)}%)`}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {/* Badges list */}
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {Object.entries(summary.statusCounts).map(([status, count]) => (
+                      <div
+                        key={status}
+                        className={`px-2 py-0.5 rounded-md border text-[11px] font-medium flex items-center gap-1.5 ${getStatusBadge(
+                          status
+                        )}`}
+                      >
+                        <span className="capitalize">{status}</span>
+                        <span className="px-1 py-0.2 rounded bg-black/5 font-semibold">
+                          {count}
                         </span>
-                        <span className="text-[10px] text-slate-500">Click to ask</span>
-                      </button>
+                      </div>
                     ))}
                   </div>
                 </div>
+              )}
+
+              {/* 3. Recent Orders Data Table */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+                  <div>
+                    <h3 className="font-semibold text-slate-900 text-xs sm:text-sm">
+                      Recent Orders
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      Sample records queried by function tools
+                    </p>
+                  </div>
+                  <span className="text-[11px] text-slate-500 font-mono">
+                    {recentOrders.length} rows
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto max-h-[260px]">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-500 font-medium uppercase tracking-wider sticky top-0 border-b border-slate-200 text-[10px]">
+                      <tr>
+                        <th className="px-3.5 py-2 font-semibold">Order ID</th>
+                        <th className="px-3.5 py-2 font-semibold">Product</th>
+                        <th className="px-3.5 py-2 text-right font-semibold">Total</th>
+                        <th className="px-3.5 py-2 text-center font-semibold">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-700">
+                      {recentOrders.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-6 text-center text-xs text-slate-400">
+                            {healthLoading ? 'Loading verified order records...' : 'No orders loaded'}
+                          </td>
+                        </tr>
+                      ) : (
+                        recentOrders.map((order) => (
+                          <tr key={order.order_id} className="hover:bg-slate-50/80 transition">
+                            <td className="px-3.5 py-2 font-mono font-medium text-indigo-600">
+                              {order.order_id}
+                            </td>
+                            <td className="px-3.5 py-2">
+                              <div className="font-medium text-slate-900 truncate max-w-[130px]">
+                                {order.product}
+                              </div>
+                              <div className="text-[10px] text-slate-400 truncate max-w-[130px]">
+                                {order.customer_name}
+                              </div>
+                            </td>
+                            <td className="px-3.5 py-2 text-right font-mono text-emerald-700 font-medium whitespace-nowrap">
+                              ₹{order.total_inr.toLocaleString('en-IN')}
+                            </td>
+                            <td className="px-3.5 py-2 text-center">
+                              <span
+                                className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border ${getStatusBadge(
+                                  order.status
+                                )}`}
+                              >
+                                {order.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            ) : (
-              /* Conversation Messages */
-              messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex flex-col ${
-                    msg.role === 'user' ? 'items-end' : 'items-start'
-                  }`}
+
+              {/* 4. Discreet Expandable System Diagnostics */}
+              <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden text-xs">
+                <button
+                  type="button"
+                  onClick={() => setShowDiagnostics(!showDiagnostics)}
+                  className="w-full px-4 py-2.5 flex items-center justify-between text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer"
+                  aria-expanded={showDiagnostics}
                 >
-                  <div
-                    className={`max-w-[88%] sm:max-w-[80%] rounded-2xl px-4 py-3 text-xs sm:text-sm shadow-sm ${
-                      msg.role === 'user'
-                        ? 'bg-blue-600 text-white rounded-br-xs'
-                        : msg.isError
-                        ? 'bg-rose-950/40 border border-rose-500/30 text-rose-200 rounded-bl-xs'
-                        : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-xs'
-                    }`}
-                  >
-                    {/* Tool Events Activity Badges */}
-                    {msg.toolEvents && msg.toolEvents.length > 0 && (
-                      <div className="mb-2.5 pb-2.5 border-b border-slate-800/80 flex flex-wrap gap-1.5">
-                        {msg.toolEvents.map((evt, eIdx) => (
-                          <span
-                            key={eIdx}
-                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-mono border ${
-                              evt.status === 'success'
-                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                            }`}
-                            title={`Tool: ${evt.name} (${evt.status})`}
-                          >
-                            {evt.status === 'success' ? (
-                              <Check className="w-3 h-3 text-emerald-400" />
-                            ) : (
-                              <AlertCircle className="w-3 h-3 text-rose-400" />
-                            )}
-                            <span>{evt.label}</span>
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                  <div className="flex items-center gap-2">
+                    <Server className="w-3.5 h-3.5 text-slate-400" />
+                    <span className="font-medium text-xs">System & API Diagnostics</span>
+                  </div>
+                  {showDiagnostics ? (
+                    <ChevronUp className="w-4 h-4 text-slate-400" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                  )}
+                </button>
 
-                    {/* Message Content */}
-                    <div className="whitespace-pre-wrap leading-relaxed">
-                      {msg.content}
+                {showDiagnostics && (
+                  <div className="px-4 pb-3.5 pt-1 border-t border-slate-100 text-[11px] text-slate-500 space-y-1.5 bg-slate-50/50">
+                    <div className="flex justify-between py-0.5">
+                      <span>Status</span>
+                      <span className="font-medium text-slate-800 font-mono">
+                        {health?.status ?? 'Disconnected'}
+                      </span>
                     </div>
-
-                    {/* Error Retry Button */}
-                    {msg.isError && msg.canRetry && (
-                      <div className="mt-3 pt-2 border-t border-rose-500/20 flex items-center justify-between">
-                        <span className="text-[11px] text-rose-300">
-                          Something went wrong.
-                        </span>
-                        <button
-                          onClick={handleRetry}
-                          disabled={chatLoading}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 text-xs font-medium transition cursor-pointer"
-                        >
-                          <RotateCcw className="w-3 h-3" />
-                          <span>Retry</span>
-                        </button>
-                      </div>
-                    )}
+                    <div className="flex justify-between py-0.5">
+                      <span>Server Uptime</span>
+                      <span className="font-mono text-slate-800">
+                        {health?.uptimeSeconds ?? 0}s
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-0.5">
+                      <span>AI Model</span>
+                      <span className="font-mono text-slate-800">
+                        {health?.aiConfig?.model ?? 'gemini-3.8-flash'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-0.5">
+                      <span>API Key</span>
+                      <span className="font-mono text-slate-800">
+                        {health?.aiConfig?.keyConfigured ? 'Configured' : 'Missing'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-0.5">
+                      <span>Last Checked</span>
+                      <span className="font-mono text-slate-800">
+                        {lastChecked || 'Initial load'}
+                      </span>
+                    </div>
                   </div>
-
-                  <span className="text-[10px] text-slate-500 mt-1 px-1">
-                    {msg.timestamp}
-                  </span>
-                </div>
-              ))
-            )}
-
-            {/* Loading Indicator */}
-            {chatLoading && (
-              <div className="flex flex-col items-start space-y-1">
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl rounded-bl-xs px-4 py-3 text-xs sm:text-sm text-slate-300 flex items-center gap-3">
-                  <div className="w-4 h-4 rounded-full border-2 border-blue-400 border-t-transparent animate-spin"></div>
-                  <span className="animate-pulse">
-                    Orderly AI is processing your request via Gemini...
-                  </span>
-                </div>
+                )}
               </div>
-            )}
-
-            <div ref={messagesEndRef} />
+            </section>
           </div>
+        </main>
 
-          {/* Chat Input Controls */}
-          <div className="p-3.5 sm:p-4 border-t border-slate-800/80 bg-slate-900/90">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSendMessage();
-              }}
-              className="flex items-end gap-2"
-            >
-              <div className="flex-1 relative">
-                <textarea
-                  ref={textareaRef}
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask about orders, revenue, cancellations, customers (Enter to send, Shift+Enter for new line)..."
-                  rows={2}
-                  maxLength={2000}
-                  disabled={chatLoading}
-                  aria-label="Ask Orderly AI about orders"
-                  className="w-full resize-none rounded-xl bg-slate-950 border border-slate-800 px-3.5 py-2.5 text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 transition"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={chatLoading || !inputText.trim()}
-                aria-label="Send message"
-                className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center transition disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-blue-600/20 cursor-pointer shrink-0"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </form>
-            <div className="flex items-center justify-between mt-2 px-1 text-[11px] text-slate-500">
-              <span>Press <kbd className="font-mono bg-slate-800 px-1 py-0.5 rounded text-[10px]">Enter</kbd> to submit</span>
-              <span>{inputText.length} / 2000</span>
+        {/* Minimal Footer */}
+        <footer className="mt-auto border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500">
+          <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <span>Orderly AI © 2026 · Operations Intelligence Screening</span>
+            <div className="flex items-center gap-2.5 text-slate-400 text-[11px]">
+              <span>React 19 + Vite</span>
+              <span>·</span>
+              <span>Tailwind CSS</span>
+              <span>·</span>
+              <span>Gemini Interactions API</span>
             </div>
           </div>
-        </section>
-
-        {/* Right Column: Live Dataset Metrics & Verified Table Explorer (5 Columns) */}
-        <section
-          className="lg:col-span-5 space-y-6 flex flex-col justify-start"
-          aria-label="Dataset metrics and catalog explorer"
-        >
-          {/* Key Metrics Grid */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800/90">
-              <div className="flex items-center justify-between text-slate-400 mb-1">
-                <span className="text-[11px] font-medium uppercase tracking-wider">Orders</span>
-                <Package className="w-4 h-4 text-blue-400" />
-              </div>
-              <div className="text-xl sm:text-2xl font-bold text-white">
-                {summary ? summary.totalOrders : (health?.dataset.totalOrders ?? '60')}
-              </div>
-              <p className="text-[11px] text-slate-400">
-                {summary ? `${summary.uniqueCustomers} customers` : 'From orders.csv'}
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800/90">
-              <div className="flex items-center justify-between text-slate-400 mb-1">
-                <span className="text-[11px] font-medium uppercase tracking-wider">Revenue</span>
-                <IndianRupee className="w-4 h-4 text-emerald-400" />
-              </div>
-              <div className="text-xl sm:text-2xl font-bold text-emerald-400">
-                {summary
-                  ? `₹${summary.totalRevenueInr.toLocaleString('en-IN')}`
-                  : health
-                  ? `₹${health.dataset.totalRevenueInr.toLocaleString('en-IN')}`
-                  : '₹2,78,410'}
-              </div>
-              <p className="text-[11px] text-slate-400">Verified monetary totals</p>
-            </div>
-
-            <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800/90">
-              <div className="flex items-center justify-between text-slate-400 mb-1">
-                <span className="text-[11px] font-medium uppercase tracking-wider">Regions</span>
-                <MapPin className="w-4 h-4 text-amber-400" />
-              </div>
-              <div className="text-xl sm:text-2xl font-bold text-white">
-                {summary ? `${summary.uniqueCities} Cities` : '6 Cities'}
-              </div>
-              <p className="text-[11px] text-slate-400">
-                {summary ? `${summary.dateRange.from} to ${summary.dateRange.to}` : 'Active metro areas'}
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800/90">
-              <div className="flex items-center justify-between text-slate-400 mb-1">
-                <span className="text-[11px] font-medium uppercase tracking-wider">Model</span>
-                <Sparkles className="w-4 h-4 text-purple-400" />
-              </div>
-              <div className="text-xl sm:text-2xl font-bold text-purple-300">
-                {health?.aiConfig.model ? health.aiConfig.model.replace('gemini-', '') : '3.8-flash'}
-              </div>
-              <p className="text-[11px] text-slate-400">
-                {health?.aiConfig.keyConfigured ? 'API Key Active' : 'Interactions API'}
-              </p>
-            </div>
-          </div>
-
-          {/* Status Distribution Pills */}
-          {summary?.statusCounts && (
-            <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800/90 space-y-2">
-              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                Order Status Breakdown
-              </h3>
-              <div className="flex flex-wrap gap-1.5">
-                {Object.entries(summary.statusCounts).map(([status, count]) => (
-                  <div
-                    key={status}
-                    className={`px-2.5 py-1 rounded-md border text-xs font-medium flex items-center gap-1.5 ${getStatusBadge(
-                      status
-                    )}`}
-                  >
-                    <span className="capitalize">{status}</span>
-                    <span className="px-1 py-0.2 rounded bg-white/10 font-bold">{count}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Sample Table Preview */}
-          <div className="rounded-xl border border-slate-800/90 bg-slate-900/80 overflow-hidden shadow-sm">
-            <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-white text-xs sm:text-sm">
-                  Verified Dataset Sample
-                </h3>
-                <p className="text-[11px] text-slate-400">
-                  Data analyzed by Gemini tools in real-time
-                </p>
-              </div>
-              <span className="text-[11px] text-slate-400 font-mono">
-                {recentOrders.length} rows
-              </span>
-            </div>
-
-            <div className="overflow-x-auto max-h-[220px]">
-              <table className="w-full text-left text-[11px]">
-                <thead className="bg-slate-950/80 text-slate-400 font-medium uppercase tracking-wider sticky top-0 border-b border-slate-800">
-                  <tr>
-                    <th className="px-3 py-2">ID</th>
-                    <th className="px-3 py-2">Customer</th>
-                    <th className="px-3 py-2">Product</th>
-                    <th className="px-3 py-2 text-right">Total</th>
-                    <th className="px-3 py-2 text-center">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                  {recentOrders.map((order) => (
-                    <tr key={order.order_id} className="hover:bg-slate-800/40 transition">
-                      <td className="px-3 py-2 font-mono font-medium text-blue-400">
-                        {order.order_id}
-                      </td>
-                      <td className="px-3 py-2 text-white font-medium truncate max-w-[100px]">
-                        {order.customer_name}
-                      </td>
-                      <td className="px-3 py-2 text-slate-300 truncate max-w-[110px]">
-                        {order.product}
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono text-emerald-400 font-medium whitespace-nowrap">
-                        ₹{order.total_inr.toLocaleString('en-IN')}
-                      </td>
-                      <td className="px-3 py-2 text-center">
-                        <span
-                          className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border ${getStatusBadge(
-                            order.status
-                          )}`}
-                        >
-                          {order.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* System Diagnostics */}
-          <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800/90 text-[11px] space-y-1 text-slate-400">
-            <div className="flex items-center gap-1.5 font-medium text-slate-300 mb-1">
-              <Server className="w-3.5 h-3.5 text-blue-400" />
-              <span>System & API Diagnostics</span>
-            </div>
-            <div className="font-mono bg-slate-950/80 p-2.5 rounded-lg border border-slate-800/60 space-y-1">
-              <div>Health: {health?.status ?? 'Connecting'} (Uptime: {health?.uptimeSeconds ?? 0}s)</div>
-              <div>Dataset: {health?.dataset?.totalOrders ?? 60} records validated with Zod</div>
-              <div>Last Synced: {lastChecked || 'Initial load'}</div>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t border-slate-800/80 py-4 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>Orderly AI © 2026 · Screening Task for Torcue AI</span>
-          <div className="flex items-center gap-3 text-slate-400">
-            <span>React 19 + TypeScript</span>
-            <span>·</span>
-            <span>Express ES Modules</span>
-            <span>·</span>
-            <span>Gemini Function Calling</span>
-          </div>
-        </div>
-      </footer>
+        </footer>
+      </div>
     </div>
   );
 }
