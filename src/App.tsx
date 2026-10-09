@@ -281,7 +281,7 @@ export default function App() {
       const [healthRes, summaryRes, ordersRes] = await Promise.all([
         fetch('/api/health'),
         fetch('/api/orders/summary'),
-        fetch('/api/orders?limit=50'),
+        fetch('/api/orders?limit=100'),
       ]);
 
       if (!healthRes.ok) {
@@ -895,7 +895,9 @@ export default function App() {
                     Store Orders
                   </h3>
                   <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium">
-                    {filteredOrders.length}
+                    {filteredOrders.length === recentOrders.length
+                      ? `${filteredOrders.length} orders`
+                      : `${filteredOrders.length} of ${recentOrders.length}`}
                   </span>
                 </div>
 
@@ -913,11 +915,11 @@ export default function App() {
 
               {/* Status Filter Tabs */}
               <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-1 overflow-x-auto text-[11px] bg-slate-50/50">
-                {['all', 'delivered', 'cancelled', 'returned'].map((f) => (
+                {['all', 'delivered', 'cancelled', 'returned', 'shipped', 'processing'].map((f) => (
                   <button
                     key={f}
                     onClick={() => setStatusFilter(f)}
-                    className={`px-2.5 py-0.5 rounded text-[11px] font-medium capitalize transition cursor-pointer ${
+                    className={`px-2.5 py-0.5 rounded text-[11px] font-medium capitalize transition cursor-pointer shrink-0 ${
                       statusFilter === f
                         ? 'bg-slate-900 text-white'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
