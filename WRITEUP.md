@@ -1,0 +1,13 @@
+# Orderly AI — Implementation Write-up
+
+Orderly AI is a full-stack order assistant built with React, TypeScript, Vite, Tailwind CSS, Node.js, Express, and the official `@google/genai` SDK. The Express backend loads and validates the supplied 60-row `orders.csv` dataset using `csv-parse` and Zod, then exposes a chat endpoint alongside health and order-data endpoints. The React client sends user messages to `POST /api/chat` and displays the assistant reply, loading and error states, and sanitized tool activity events.
+
+The agent provides Gemini with three function declarations: `lookup_order`, `search_orders`, and `calculate_order_metrics`. Based on the question, the model can request one or more functions. The backend validates each argument, dispatches only allowlisted functions, executes deterministic JavaScript queries against the in-memory dataset, and returns function results to Gemini so it can form a natural-language answer. Calculations use the dataset's `total_inr` values rather than model-generated arithmetic. The agent has a bounded tool-call loop and reports missing orders or empty results rather than inventing records.
+
+Guardrails include startup validation of the CSV, strict input and tool-argument validation, message-size limits, bounded search results and tool-call iterations, sanitized API errors, and server-only handling of the Gemini API key through environment variables. Revenue and top-customer spending exclude cancelled orders by default; returned orders remain included unless a status filter excludes them. These conventions are applied consistently and documented.
+
+The repository includes Vitest and Supertest tests for data loading, schema validation, API health, deterministic tools, chat request validation, mocked Gemini function-call cycles, and frontend interaction states. The reported local run passed 40 tests across six test suites, and the Vite production build completed successfully. These are local results and should be re-run against the final deployed commit.
+
+Deployment is configured for a single Render Node web service: the build creates the Vite `dist` directory and Express serves both the API and frontend from one origin. Configure `GEMINI_API_KEY` and `GEMINI_MODEL` in Render's environment settings; never commit secrets. **Live URL:** add the actual deployed Render URL after deployment is completed and verified.
+
+With more time, I would add CI checks, stronger end-to-end browser tests, request timeouts and rate limiting, better structured order-result cards, and monitoring for model latency and quota failures. Development assistance was provided by Google Antigravity and ChatGPT; the runtime AI agent uses the Gemini API.
