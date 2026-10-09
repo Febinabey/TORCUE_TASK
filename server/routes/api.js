@@ -1,8 +1,22 @@
 import express from 'express';
+import { z } from 'zod';
 import { dataService } from '../services/dataService.js';
 import { config } from '../config.js';
+import {
+  agentService,
+  AiConfigurationMissingError,
+  AgentExecutionError,
+} from '../services/agentService.js';
 
 export const apiRouter = express.Router();
+
+const ChatRequestSchema = z.object({
+  message: z
+    .string({ required_error: 'Field "message" is required' })
+    .trim()
+    .min(1, 'Message cannot be empty')
+    .max(2000, 'Message cannot exceed 2000 characters'),
+});
 
 /**
  * Health check endpoint
@@ -86,4 +100,70 @@ apiRouter.get('/orders', (req, res) => {
     returned: slicedOrders.length,
     orders: slicedOrders,
   });
+});
+
+/**
+ * AI Assistant Chat endpoint
+ * POST /api/chat
+ */
+apiRouter.post('/chat', async (req, res) => {
+  // 1. Validate request body
+  const validation = ChatRequestSchema.safeParse(req.body);
+  if (!validation.success) {
+    return res.status(400).json({
+      error: 'Invalid Request',
+      message: validation.error.issues[0]?.message || 'Invalid message payload',
+    });
+  }
+
+  const { message } = validation.data;
+
+  // 2. Ensure dataset is loaded
+  if (!dataService.isLoaded()) {
+    return res.status(503).json({
+      error: 'Service Unavailable',
+      message: 'Orders dataset is not loaded. Please ensure dataset is available.',
+    });
+  }
+
+  // 3. Ensure AI key is configured
+  if (!config.gemini.apiKey && !req.app.locals.mockAgentClient) {
+    return res.status(503).json({
+      error: 'Service Unavailable',
+      message:
+        'Gemini API key is not configured on the server. Please set GEMINI_API_KEY.',
+    });
+  }
+
+  // 4. Execute conversational agent interaction
+  try {
+    const result = await agentService.chatWithAgent(message, {
+      mockClient: req.app.locals.mockAgentClient,
+    });
+
+    res.json({
+      reply: result.reply,
+      toolEvents: result.toolEvents,
+    });
+  } catch (err) {
+    if (err instanceof AiConfigurationMissingError) {
+      return res.status(503).json({
+        error: 'Service Unavailable',
+        message: err.message,
+      });
+    }
+
+    if (err instanceof AgentExecutionError) {
+      return res.status(502).json({
+        error: 'Bad Gateway',
+        message: err.message,
+      });
+    }
+
+    console.error('[Orderly AI Chat Route Error]', err);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'An unexpected error occurred while generating a response.',
+    });
+  }
 });
